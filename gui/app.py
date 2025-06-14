@@ -15,7 +15,7 @@ class PromptSnippetsApp(tk.Tk):
     def __init__(self):
         super().__init__()
         
-        self.title("Prompt Snippets")
+        self.title("LLM Prompt Snippets Manager")
         self.geometry("1200x800")
         
         # Remove fullscreen

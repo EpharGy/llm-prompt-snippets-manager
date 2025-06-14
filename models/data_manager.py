@@ -6,6 +6,7 @@ class DataManager:
     def __init__(self, data_dir: str = "data"):
         self.data_dir = data_dir
         self.snippets_file = os.path.join(data_dir, "snippets.json")
+        self.sample_file = os.path.join(data_dir, "sample_snippets.json")
         print(f"Data directory: {self.data_dir}")  # Debug
         print(f"Snippets file: {self.snippets_file}")  # Debug
         
@@ -13,6 +14,9 @@ class DataManager:
         if not os.path.exists(data_dir):
             print(f"Creating data directory: {data_dir}")  # Debug
             os.makedirs(data_dir)
+        
+        # Initialize with sample data if no user data exists
+        self._initialize_sample_data_if_needed()
 
     def add_snippet(self, snippet: Dict) -> bool:
         """Add new snippet to storage"""
@@ -134,3 +138,26 @@ class DataManager:
         except Exception as e:
             print(f"Error deleting snippets: {str(e)}")
             return False
+
+    def _initialize_sample_data_if_needed(self):
+        """Copy sample data to user data file if user data doesn't exist"""
+        try:
+            # If user data already exists, do nothing
+            if os.path.exists(self.snippets_file):
+                return
+            
+            # If sample file exists, copy it to user data
+            if os.path.exists(self.sample_file):
+                print("Initializing with sample data for first-time users")
+                with open(self.sample_file, 'r', encoding='utf-8') as f:
+                    sample_data = json.load(f)
+                
+                # Save sample data as user data
+                self.save_snippets(sample_data)
+                print(f"Copied {len(sample_data)} sample snippets to user data file")
+            else:
+                print("No sample data file found, starting with empty data")
+                
+        except Exception as e:
+            print(f"Error initializing sample data: {str(e)}")
+            # Continue without sample data if there's an error

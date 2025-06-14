@@ -1,8 +1,8 @@
-# roleplay-snippets/roleplay-snippets/README.md
-
-# Prompt Snippets Manager
+# LLM Prompt Snippets Manager
 
 A simple Python desktop application built with Tkinter for managing LLM prompt snippets. This application allows users to store, organize, and combine text snippets into complete prompts for AI interactions.
+
+**GitHub Repository**: https://github.com/EpharGy/llm-prompt-snippets-manager
 
 ## Features
 
@@ -49,27 +49,49 @@ Prompt Snippets/
 ## Setup Instructions
 
 1. Clone the repository:
-   ```
-   git clone <repository-url>
-   cd "Prompt Snippets"
-   ```
-
-2. Install the required packages:
-   ```
-   pip install -r requirements.txt
+   ```bash
+   git clone https://github.com/EpharGy/llm-prompt-snippets-manager.git
+   cd llm-prompt-snippets-manager
    ```
 
-3. Run the application:
-   ```
+2. Run the application (no dependencies required):
+   ```bash
    python main.py
    ```
 
+   **Note**: This application uses only Python standard library modules, so no additional package installation is required!
+
 ## Usage Guidelines
 
-- Use the form to add new snippets.
-- Select snippets from the list to combine them.
-- View the combined result and copy it to your clipboard for use in your roleplay sessions.
+### Adding Snippets
+- Click the "Add Snippet" button to create new prompt snippets
+- Fill in the name, category, prompt text, and optional labels
+- Use the exclusive checkbox for snippets that shouldn't be combined with others
+
+### Managing Snippets
+- Use the search bar to find specific snippets by text content
+- Filter by categories and labels using the filter bubbles
+- Select multiple snippets to combine them into a complete prompt
+- Edit or delete snippets using the context menu (right-click)
+
+### Using Combined Prompts
+- Selected snippets appear in the preview pane
+- Copy the combined text to your clipboard for use with AI tools
+- Open the combined prompt in a separate window for better viewing
+
+### Data Storage
+- All snippets are automatically saved to `data/snippets.json`
+- The application creates the data directory on first run
+
+## Requirements
+
+- Python 3.7 or higher
+- No external dependencies required (uses only Python standard library)
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request or open an Issue on GitHub.
 
 ## License
 
-This project is licensed under the MIT License.
+This project is licensed under the MIT License. See the repository for more details.

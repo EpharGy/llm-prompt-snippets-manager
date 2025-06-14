@@ -153,3 +153,5 @@ Desktop.ini
 
 # Data folder contents (keep folder but ignore contents)
 data/*
+# But allow the sample file to be tracked
+!data/sample_snippets.json
