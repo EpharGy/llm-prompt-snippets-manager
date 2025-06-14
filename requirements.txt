@@ -1,0 +1,5 @@
+# This project uses only Python standard library modules
+# No external dependencies required
+
+# If you want to use pyperclip for clipboard functionality instead of tkinter's built-in clipboard:
+# pyperclip>=1.8.2
