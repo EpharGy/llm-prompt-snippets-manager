@@ -18,6 +18,11 @@ class PromptSnippetsApp(tk.Tk):
         self.title("LLM Prompt Snippets Manager")
         self.geometry("1200x800")
         
+        # Set application icon
+        icon_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'assets', 'icons', 'app_icon.ico')
+        if os.path.exists(icon_path):
+            self.iconbitmap(icon_path)
+        
         # Remove fullscreen
         # self.state('zoomed')  # Remove this line
         

@@ -155,3 +155,13 @@ Desktop.ini
 data/*
 # But allow the sample file to be tracked
 !data/sample_snippets.json
+
+# Personal files and character data
+!Persona.txt
+
+# Development scripts (utilities not needed in production)
+create_icon.py
+
+# Development utilities and temporary icon files
+create_icon.py
+assets/icons/app_icon.png
