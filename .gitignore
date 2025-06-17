@@ -157,7 +157,7 @@ data/*
 !data/sample_snippets.json
 
 # Personal files and character data
-!Persona.txt
+_Persona.txt
 
 # Development scripts (utilities not needed in production)
 create_icon.py
