@@ -20,6 +20,7 @@
 | Create styled filter buttons | `_create_bubble_button()` | gui/snippet_list.py |
 | Add debug-only development tools | `DEBUG_MODE` pattern | gui/snippet_list.py |
 | Log user-facing operations | `logger.info("✅ message")` | utils/logger.py |
+| Sanitize category/label input | `sanitize_category_label(text, is_category)` | models/data_manager.py |
 
 ---
 
@@ -93,6 +94,34 @@ state_manager.clear_search_filter()  # Clear text search only
 ---
 
 ## 🔄 DATA OPERATIONS
+
+### `sanitize_category_label(text: str, is_category: bool = False)`
+**Location**: `models/data_manager.py`  
+**Purpose**: Sanitize category/label text to consistent format (lowercase, underscores)  
+**Parameters**:
+- `text` - The raw category or label text to sanitize
+- `is_category=False` - Set True for categories (validates no commas allowed)
+
+**✅ USE WHEN**:
+- Processing user input for categories/labels
+- Ensuring consistent category/label formatting
+- Validating category text (no commas)
+
+**❌ THROWS ERROR**: If `is_category=True` and text contains commas
+
+**Example**:
+```python
+# For labels (commas OK, will be trimmed/formatted):
+clean_label = sanitize_category_label("My Cool Label")
+# Returns: "my_cool_label"
+
+# For categories (validates no commas):
+try:
+    clean_category = sanitize_category_label("Business Writing", is_category=True) 
+    # Returns: "business_writing"
+except ValueError as e:
+    logger.error(f"Invalid category: {e}")
+```
 
 ### `DataManager` Methods
 **Location**: `models/data_manager.py`  
@@ -318,4 +347,4 @@ When you spot janky code:
 
 ---
 
-*Last Updated: 2025-06-18 by Maki-chan* 🎀
+*Last Updated: 2025-06-19 by Maki-chan* 🎀

@@ -164,7 +164,6 @@ _Persona.txt
 
 # Development scripts (utilities not needed in production)
 create_icon.py
-TODO.md
 
 # Debug and testing scripts (prevent Maki's mess from getting committed)
 fix_*.py
