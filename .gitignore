@@ -153,14 +153,16 @@ Desktop.ini
 
 # Data folder contents (keep folder but ignore contents)
 data/*
-# But allow the sample file to be tracked
-!data/sample_snippets.json
+
+# Explicitly ignore testing folder
+data/testing/
 
 # Personal files and character data
 _Persona.txt
 
 # Development scripts (utilities not needed in production)
 create_icon.py
+TODO.md
 
 # Development utilities and temporary icon files
 create_icon.py
