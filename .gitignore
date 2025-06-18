@@ -159,16 +159,9 @@ data/*
 # Explicitly ignore testing folder
 data/testing/
 
-# Personal files and character data
-_Persona.txt
-
 # Development scripts (utilities not needed in production)
 create_icon.py
 
 # Debug and testing scripts (prevent Maki's mess from getting committed)
 fix_*.py
 test_*.py
-
-# Development utilities and temporary icon files
-create_icon.py
-assets/icons/app_icon.png
