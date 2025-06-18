@@ -270,62 +270,29 @@ matching_ids = filter_snippets_by_search(all_snippets.values(), ["search", "term
 
 ---
 
-## ⚠️ JANKY BITS TO FIX (Technical Debt)
+## 🧪 DEBUG MODE PATTERN
 
-### 🧪 Debug Mode Pattern ✅ IMPLEMENTED
-**Purpose**: Development tools that only appear in debug mode  
-**Location**: `gui/snippet_list.py` (T1/T2 test buttons)  
-**Usage**: Set environment variable `PROMPT_SNIPPETS_DEBUG=true`  
+### Launching Debug Mode
+**Recommended**: Use `debug.py` script for development tools
+```bash
+python debug.py
+```
 
+**Alternative**: Set environment variable (legacy method)
+```bash
+PROMPT_SNIPPETS_DEBUG=true python main.py
+```
+
+**Pattern for debug-only features**:
 ```python
-# Pattern for debug-only features:
 import os
 DEBUG_MODE = os.environ.get('PROMPT_SNIPPETS_DEBUG', 'False').lower() == 'true'
 
 if DEBUG_MODE:
+    # Add development tools that shouldn't appear for end users
     self.test1_btn = ttk.Button(button_frame, text="T1", width=3, command=self._add_test_snippet_1)
     self.test2_btn = ttk.Button(button_frame, text="T2", width=3, command=self._add_test_snippet_2)
-    # Add tooltips and state management for debug buttons
 ```
-
-**✅ USE WHEN**: Adding development/testing tools that shouldn't appear for end users
-
-### 📝 Print Statements vs Logging
-**Problem**: Mix of print() and logger calls throughout codebase  
-**Location**: Multiple files (snippet_list.py, data_manager.py)  
-**Fix When**: Next logging cleanup pass  
-
-```python
-# REPLACE:
-print(f"Delete button clicked. Current mode: {self.delete_mode}")
-# WITH:
-logger.debug(f"Delete button clicked. Current mode: {self.delete_mode}")
-```
-
-### 🎨 Hardcoded Styling Scattered
-**Problem**: UI colors/styles repeated throughout code  
-**Location**: `gui/snippet_list.py` bubble button creation  
-**Fix When**: Creating centralized theme system  
-
-```python
-# CENTRALIZE THESE:
-bg="#f0f0f0", fg="#333333", activebackground="#e0e0e0"
-```
-
-### 🔄 Complex Filter Logic
-**Problem**: `_apply_bubble_filters()` doing too many things  
-**Location**: `gui/snippet_list.py` lines 548-585  
-**Fix When**: Adding more filter features - break into smaller functions  
-
-### 🖱️ Brittle Scroll Wheel Handling
-**Problem**: Manual widget tree traversal for scroll events  
-**Location**: `gui/snippet_list.py` `_create_bubble_button()`  
-**Fix When**: UI refactoring - use proper event delegation  
-
-### 🔄 Inconsistent Error Handling
-**Problem**: Mix of bool returns, exceptions, and silent failures  
-**Location**: `models/data_manager.py`, various GUI methods  
-**Fix When**: Adding comprehensive error handling system  
 
 ---
 
@@ -338,12 +305,11 @@ When adding new reusable functions to this project:
 - [ ] Include code example
 - [ ] Note any functions it should be paired with
 - [ ] Add to appropriate section (State/Data/UI/etc.)
-- [ ] Check if it fixes any items in "JANKY BITS TO FIX"
 
-When you spot janky code:
-- [ ] Add to "JANKY BITS TO FIX" section with location
-- [ ] Note when it should be fixed (which feature addition)
-- [ ] Include example of proper replacement
+When you discover reusable patterns:
+- [ ] Document the pattern in appropriate section
+- [ ] Add examples and usage notes
+- [ ] Update the quick lookup table
 
 ---
 

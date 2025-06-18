@@ -58,6 +58,14 @@
    - [ ] **Visual state consistency** - Ensure all UI state changes are properly reflected
    - [ ] **Accessibility improvements** - Consider contrast, readability, keyboard navigation
 
+5. **Technical Debt & Code Quality**
+   - [ ] **Debug Mode Launch** - Update debug mode to launch via `debug.py` instead of environment variable
+   - [ ] **Print Statement Cleanup** - Replace remaining print() calls with proper logging
+   - [ ] **Centralized Styling** - Move hardcoded UI colors/styles to theme system
+   - [ ] **Complex Filter Logic** - Break down `_apply_bubble_filters()` into smaller functions
+   - [ ] **Scroll Wheel Handling** - Replace manual widget tree traversal with proper event delegation
+   - [ ] **Consistent Error Handling** - Standardize error handling patterns (bool returns vs exceptions)
+
 ### 🎯 NEXT PRIORITIES: Advanced Management Features
 1. **Category/Label Management UI**
    - [ ] Create management interface (view, rename, delete with protection)
