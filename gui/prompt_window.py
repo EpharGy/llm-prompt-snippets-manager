@@ -1,6 +1,9 @@
 import tkinter as tk
 from tkinter import ttk
 from utils.ui_utils import create_tooltip
+from utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 class PromptWindow(tk.Toplevel):
     def __init__(self, parent, on_close_callback=None):
@@ -90,21 +93,29 @@ class PromptWindow(tk.Toplevel):
 
     def update_prompt(self, text: str):
         """Update the prompt text"""
+        # Ensure text is clean with no trailing whitespace
+        clean_text = text.strip() if text else ""
+        
         self.text_widget.configure(state='normal')
         self.text_widget.delete('1.0', tk.END)
-        self.text_widget.insert('1.0', text)
+        self.text_widget.insert('1.0', clean_text)
         self.text_widget.configure(state='disabled')
         
+        # Store clean text for copying
+        self.current_text = clean_text
+        
         # Enable/disable copy button based on content
-        has_content = text and text != "No Snippets Selected"
+        has_content = clean_text and clean_text != "No Snippets Selected"
         self.copy_btn.configure(state='normal' if has_content else 'disabled')
 
     def _copy_to_clipboard(self):
         """Copy prompt text to clipboard"""
-        text = self.text_widget.get('1.0', tk.END).strip()
-        if text:
+        # Use stored clean text instead of reading from widget
+        if hasattr(self, 'current_text') and self.current_text:
             self.clipboard_clear()
-            self.clipboard_append(text)
+            self.clipboard_append(self.current_text)
+            
+            logger.info(f"📋 Copied {len(self.current_text)} characters from prompt preview")
             
             # Brief visual feedback - same as main window
             original_text = self.copy_btn.cget('text')

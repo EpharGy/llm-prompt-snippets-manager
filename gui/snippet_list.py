@@ -1,4 +1,5 @@
 from uuid import uuid4
+import os
 import tkinter as tk
 from tkinter import ttk, messagebox
 import traceback
@@ -6,9 +7,14 @@ from typing import List, Dict, Optional, Set
 from copy import deepcopy
 
 from models.snippet_state import SnippetState, SnippetStateManager
-from utils.state_utils import filter_snippets_by_search
 from utils.ui_utils import create_tooltip, configure_tree_style
 from gui.snippet_dialog import SnippetDialog
+from utils.logger import get_logger
+
+logger = get_logger(__name__)
+
+# Debug mode flag - set PROMPT_SNIPPETS_DEBUG=true to enable test buttons
+DEBUG_MODE = os.environ.get('PROMPT_SNIPPETS_DEBUG', 'False').lower() == 'true'
 
 class ScrollableBubbleFrame(ttk.Frame):
     """Scrollable frame for bubble buttons with max 4 rows"""
@@ -267,12 +273,15 @@ class SnippetList(ttk.Frame):
         button_frame = ttk.Frame(header_frame)
         button_frame.pack(side='right')
         
-        # Test buttons
-        self.test1_btn = ttk.Button(button_frame, text="T1", width=3, command=self._add_test_snippet_1)
-        self.test1_btn.pack(side='left', padx=2)
-        
-        self.test2_btn = ttk.Button(button_frame, text="T2", width=3, command=self._add_test_snippet_2)
-        self.test2_btn.pack(side='left', padx=2)
+        # Test buttons (only in debug mode)
+        if DEBUG_MODE:
+            self.test1_btn = ttk.Button(button_frame, text="T1", width=3, command=self._add_test_snippet_1)
+            self.test1_btn.pack(side='left', padx=2)
+            
+            self.test2_btn = ttk.Button(button_frame, text="T2", width=3, command=self._add_test_snippet_2)
+            self.test2_btn.pack(side='left', padx=2)
+            
+            logger.info("🧪 DEBUG MODE: Test buttons enabled")
         
         # Add New Snippet button
         self.add_btn = ttk.Button(button_frame, text="➕", width=3, command=self._show_snippet_dialog)
@@ -340,8 +349,9 @@ class SnippetList(ttk.Frame):
         
     def _create_tooltips(self):
         """Create tooltips for UI elements"""
-        create_tooltip(self.test1_btn, "Add Test Snippet 1")
-        create_tooltip(self.test2_btn, "Add Test Snippet 2")
+        if DEBUG_MODE:
+            create_tooltip(self.test1_btn, "Add Test Snippet 1")
+            create_tooltip(self.test2_btn, "Add Test Snippet 2")
         create_tooltip(self.add_btn, "Add new snippet")
         create_tooltip(self.delete_btn, "Delete selected snippet (double-click to edit/delete)")
         create_tooltip(self.clear_btn, "Clear all selections")
@@ -791,7 +801,19 @@ class SnippetList(ttk.Frame):
         # Combine text search with bubble filters
         text_matching_ids = set()
         for snippet in self.all_snippets.values():
-            if (search_text in snippet['name'].lower() or
+            # Create searchable versions of text fields (convert underscores to spaces for better matching)
+            searchable_name = snippet['name'].lower().replace('_', ' ')
+            searchable_category = snippet['category'].lower().replace('_', ' ')
+            searchable_prompt = snippet.get('prompt_text', '').lower().replace('_', ' ')
+            searchable_labels = [label.lower().replace('_', ' ') for label in snippet['labels']]
+            
+            # Check if search text matches any field (supports both underscore and space versions)
+            if (search_text in searchable_name or
+                search_text in searchable_category or
+                search_text in searchable_prompt or
+                any(search_text in label for label in searchable_labels) or
+                # Also check original versions with underscores
+                search_text in snippet['name'].lower() or
                 search_text in snippet['category'].lower() or
                 search_text in snippet.get('prompt_text', '').lower() or
                 any(search_text in label.lower() for label in snippet['labels'])):
@@ -1000,7 +1022,13 @@ class SnippetList(ttk.Frame):
                 snippet for snippet in self.all_snippets.values()
                 if snippet['id'] in self.state_manager.selected_ids
             ]
-            print(f"Selected snippets: {len(selected)}")  # Debug print
+            
+            if len(selected) > 0:
+                snippet_names = [s['name'] for s in selected]
+                logger.debug(f"🎯 Selected {len(selected)} snippets: {', '.join(snippet_names)}")
+            else:
+                logger.debug("🎯 No snippets selected")
+                
             self.on_selection_changed(selected)
 
     def load_snippets(self, snippets: List[Dict]):
@@ -1058,7 +1086,8 @@ class SnippetList(ttk.Frame):
     def _add_new_snippet(self, snippet: Dict):
         """Add new snippet"""
         try:
-            print(f"Processing new snippet: {snippet['name']} with ID: {snippet['id']}")  # Debug
+            logger.info(f"➕ Adding new snippet: '{snippet['name']}' (Category: {snippet.get('category', 'None')})")
+            logger.debug(f"Snippet ID: {snippet['id']}")
             
             # Call parent handler for storage update
             if self.on_snippet_edit:
@@ -1067,16 +1096,16 @@ class SnippetList(ttk.Frame):
                 
             # Store in our collections
             self.all_snippets[snippet['id']] = snippet.copy()
+
+            # Always use the smart refresh logic that preserves state properly
+            logger.debug("Refreshing view with smart state preservation")
+            self._refresh_tree_view()
             
-            # If we're filtered, clear the search first
-            if self.state_manager.is_filtered:
-                print("Clearing search filter after adding new snippet")  # Debug
-                self._clear_search()
-            else:
-                # Just refresh the view with the new snippet
-                print("Refreshing view after adding new snippet")  # Debug
-                self._refresh_tree_view()
-                
+            # Always refresh bubble filters to include any new categories/labels
+            logger.debug("Updating filter options with new categories/labels")
+            self._refresh_bubble_filters()
+            
+            logger.info(f"✅ Successfully added snippet: '{snippet['name']}'")
             return True
             
         except Exception as e:
@@ -1088,7 +1117,8 @@ class SnippetList(ttk.Frame):
     def _update_snippet(self, snippet: Dict):
         """Update existing snippet"""
         try:
-            print(f"Updating snippet: {snippet['name']} with ID: {snippet['id']}")  # Debug
+            logger.info(f"✏️ Updating snippet: '{snippet['name']}' (Category: {snippet.get('category', 'None')})")
+            logger.debug(f"Snippet ID: {snippet['id']}")
             
             # Call parent handler for storage update
             if self.on_snippet_edit:
@@ -1104,13 +1134,19 @@ class SnippetList(ttk.Frame):
                     self.snippets[item_id] = snippet.copy()
                     
             # Refresh view and notify about selection changes
-            print("Refreshing view after update")  # Debug
+            logger.debug("Refreshing display and selection state")
             self._refresh_tree_view()
             self._notify_selection_changed()  # Ensure preview updates
+            
+            # Refresh bubble filters in case categories/labels changed
+            logger.debug("Updating filter options after changes")
+            self._refresh_bubble_filters()
+            
+            logger.info(f"✅ Successfully updated snippet: '{snippet['name']}'")
             return True
             
         except Exception as e:
-            print(f"Error updating snippet: {str(e)}")
+            logger.error(f"Failed to update snippet: {str(e)}")
             traceback.print_exc()  # Add stack trace
             messagebox.showerror("Error", "Failed to Update Snippet")
             return False
@@ -1118,7 +1154,18 @@ class SnippetList(ttk.Frame):
     def _delete_snippets(self, snippet_ids: List[str]) -> bool:
         """Delete snippets by their IDs"""
         try:
-            print(f"Deleting snippets: {snippet_ids}")  # Debug print
+            # Get snippet names for better logging
+            snippet_names = [
+                self.all_snippets[sid]['name'] for sid in snippet_ids 
+                if sid in self.all_snippets
+            ]
+            
+            if len(snippet_names) == 1:
+                logger.info(f"🗑️ Deleting snippet: '{snippet_names[0]}'")
+            else:
+                logger.info(f"🗑️ Deleting {len(snippet_names)} snippets: {', '.join(snippet_names)}")
+            
+            logger.debug(f"Snippet IDs: {snippet_ids}")
             
             # Call parent handler with delete request
             if self.on_snippets_delete:  # Use on_snippets_delete for bulk deletion
@@ -1145,12 +1192,23 @@ class SnippetList(ttk.Frame):
                         self.snippets.pop(item_id, None)
             
             # Refresh display and notify any selection changes
+            logger.debug("Refreshing display after deletion")
             self._refresh_tree_view()
             self._notify_selection_changed()
+            
+            # Refresh bubble filters in case categories/labels are no longer used
+            logger.debug("Updating filter options after deletion")
+            self._refresh_bubble_filters()
+            
+            if len(snippet_names) == 1:
+                logger.info(f"✅ Successfully deleted snippet: '{snippet_names[0]}'")
+            else:
+                logger.info(f"✅ Successfully deleted {len(snippet_names)} snippets")
+            
             return True
             
         except Exception as e:
-            print(f"Error deleting snippets: {str(e)}")
+            logger.error(f"Failed to delete snippets: {str(e)}")
             traceback.print_exc()
             return False
 
@@ -1172,8 +1230,9 @@ class SnippetList(ttk.Frame):
             self.search_entry.configure(state='disabled')
             self.add_btn.configure(state='disabled')
             self.clear_btn.configure(state='disabled')
-            self.test1_btn.configure(state='disabled')
-            self.test2_btn.configure(state='disabled')
+            if DEBUG_MODE:
+                self.test1_btn.configure(state='disabled')
+                self.test2_btn.configure(state='disabled')
             
             # Clear any existing selections
             self._clear_selections()
@@ -1196,8 +1255,9 @@ class SnippetList(ttk.Frame):
             self.search_entry.configure(state='normal')
             self.add_btn.configure(state='normal')
             self.clear_btn.configure(state='normal')
-            self.test1_btn.configure(state='normal')
-            self.test2_btn.configure(state='normal')
+            if DEBUG_MODE:
+                self.test1_btn.configure(state='normal')
+                self.test2_btn.configure(state='normal')
             
             # Clear delete selections
             self.delete_selections.clear()
@@ -1298,8 +1358,9 @@ class SnippetList(ttk.Frame):
             self.search_entry.configure(state='disabled')
             self.add_btn.configure(state='disabled')
             self.clear_btn.configure(state='disabled')
-            self.test1_btn.configure(state='disabled')
-            self.test2_btn.configure(state='disabled')
+            if DEBUG_MODE:
+                self.test1_btn.configure(state='disabled')
+                self.test2_btn.configure(state='disabled')
             
             # Clear delete selections but preserve normal selections
             self.delete_selections.clear()
@@ -1329,8 +1390,9 @@ class SnippetList(ttk.Frame):
         self.search_entry.configure(state='normal')
         self.add_btn.configure(state='normal')
         self.clear_btn.configure(state='normal')
-        self.test1_btn.configure(state='normal')
-        self.test2_btn.configure(state='normal')
+        if DEBUG_MODE:
+            self.test1_btn.configure(state='normal')
+            self.test2_btn.configure(state='normal')
         
         # Clear delete selections
         self.delete_selections.clear()

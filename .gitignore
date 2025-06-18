@@ -153,6 +153,8 @@ Desktop.ini
 
 # Data folder contents (keep folder but ignore contents)
 data/*
+# But track the sample snippets file (needed for new users)
+!data/sample_snippets.json
 
 # Explicitly ignore testing folder
 data/testing/
@@ -163,6 +165,10 @@ _Persona.txt
 # Development scripts (utilities not needed in production)
 create_icon.py
 TODO.md
+
+# Debug and testing scripts (prevent Maki's mess from getting committed)
+fix_*.py
+test_*.py
 
 # Development utilities and temporary icon files
 create_icon.py

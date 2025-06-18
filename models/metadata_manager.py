@@ -91,17 +91,14 @@ class MetadataManager:
         # Check if category already exists by name
         for cat_id, cat_data in metadata["categories"]["items"].items():
             if cat_data["name"] == category_name:
-                return cat_id
-        
-        # Create new category
+                return cat_id        # Create new category
         new_id = self._generate_uuid()
         new_category = {
             "name": category_name,
-            "id": new_id,
             "sort_order": sort_order,
             "color": color,
             "dt_created": self._get_current_timestamp(),
-            "usage_count": 0
+            "snippets_using": 0
         }
         
         metadata["categories"]["items"][new_id] = new_category
@@ -123,15 +120,12 @@ class MetadataManager:
         # Check if label already exists by name
         for label_id, label_data in metadata["labels"]["items"].items():
             if label_data["name"] == label_name:
-                return label_id
-        
-        # Create new label
+                return label_id        # Create new label
         new_id = self._generate_uuid()
         new_label = {
             "name": label_name,
-            "id": new_id,
             "dt_created": self._get_current_timestamp(),
-            "usage_count": 0
+            "snippets_using": 0
         }
         
         metadata["labels"]["items"][new_id] = new_label
@@ -160,7 +154,7 @@ class MetadataManager:
         metadata = self._load_metadata()
         
         if item_id in metadata[item_type]["items"]:
-            metadata[item_type]["items"][item_id]["usage_count"] += 1
+            metadata[item_type]["items"][item_id]["snippets_using"] += 1
             self._save_metadata(metadata)
     
     def decrement_snippet_count(self, item_type: str, item_id: str) -> None:
@@ -173,8 +167,8 @@ class MetadataManager:
         metadata = self._load_metadata()
         
         if item_id in metadata[item_type]["items"]:
-            current_count = metadata[item_type]["items"][item_id]["usage_count"]
-            metadata[item_type]["items"][item_id]["usage_count"] = max(0, current_count - 1)
+            current_count = metadata[item_type]["items"][item_id]["snippets_using"]
+            metadata[item_type]["items"][item_id]["snippets_using"] = max(0, current_count - 1)
             self._save_metadata(metadata)
     
     def update_snippet_counts_for_snippet(self, category_name: str, label_names: List[str], 
@@ -264,7 +258,7 @@ class MetadataManager:
         """Clear the metadata cache to force reload from file."""
         self._metadata_cache = None
     
-    def refresh_usage_counts(self, snippets_data: List[Dict]) -> None:
+    def refresh_snippets_usings(self, snippets_data: List[Dict]) -> None:
         """Refresh usage counts based on current snippet data.
         
         Args:
@@ -276,22 +270,22 @@ class MetadataManager:
         
         # Reset all usage counts to 0
         for category in metadata["categories"]["items"].values():
-            category["usage_count"] = 0
+            category["snippets_using"] = 0
         for label in metadata["labels"]["items"].values():
-            label["usage_count"] = 0
+            label["snippets_using"] = 0
         
         # Count actual usage from snippets
         for snippet in snippets_data:
             # Count category usage
             category_id = snippet.get('category_id')
             if category_id and category_id in metadata["categories"]["items"]:
-                metadata["categories"]["items"][category_id]["usage_count"] += 1
+                metadata["categories"]["items"][category_id]["snippets_using"] += 1
             
             # Count label usage
             label_ids = snippet.get('label_ids', [])
             for label_id in label_ids:
                 if label_id in metadata["labels"]["items"]:
-                    metadata["labels"]["items"][label_id]["usage_count"] += 1
+                    metadata["labels"]["items"][label_id]["snippets_using"] += 1
         
         # Save updated metadata
         self._save_metadata(metadata)
@@ -299,8 +293,8 @@ class MetadataManager:
         # Report results
         total_categories = len(metadata["categories"]["items"])
         total_labels = len(metadata["labels"]["items"])
-        used_categories = len([c for c in metadata["categories"]["items"].values() if c["usage_count"] > 0])
-        used_labels = len([l for l in metadata["labels"]["items"].values() if l["usage_count"] > 0])
+        used_categories = len([c for c in metadata["categories"]["items"].values() if c["snippets_using"] > 0])
+        used_labels = len([l for l in metadata["labels"]["items"].values() if l["snippets_using"] > 0])
         
         logger.info(f"Usage counts refreshed: {used_categories}/{total_categories} categories, {used_labels}/{total_labels} labels in use")
     
@@ -330,17 +324,15 @@ class MetadataManager:
             for label_id in label_ids:
                 if label_id not in metadata["labels"]["items"]:
                     orphaned_labels.add(label_id)
-        
-        # Create entries for orphaned references
+          # Create entries for orphaned references
         for category_id in orphaned_categories:
             print(f"⚠️  Creating metadata for orphaned category ID: {category_id}")
             new_category = {
                 "name": "Unknown Category",
-                "id": category_id,
                 "sort_order": 5,
                 "color": None,
                 "dt_created": self._get_current_timestamp(),
-                "usage_count": 0
+                "snippets_using": 0
             }
             metadata["categories"]["items"][category_id] = new_category
         
@@ -348,9 +340,8 @@ class MetadataManager:
             print(f"⚠️  Creating metadata for orphaned label ID: {label_id}")
             new_label = {
                 "name": "Unknown Label",
-                "id": label_id,
                 "dt_created": self._get_current_timestamp(),
-                "usage_count": 0
+                "snippets_using": 0
             }
             metadata["labels"]["items"][label_id] = new_label
         
@@ -378,7 +369,7 @@ class MetadataManager:
         self.validate_metadata_references(snippets_data)
         
         # Then refresh usage counts
-        self.refresh_usage_counts(snippets_data)
+        self.refresh_snippets_usings(snippets_data)
         
         logger.info("Metadata validation and refresh completed successfully")
     
@@ -400,7 +391,7 @@ class MetadataManager:
             # Remove categories with 0 usage
             categories_to_remove = [
                 cat_id for cat_id, cat_data in metadata["categories"]["items"].items()
-                if cat_data["usage_count"] == 0
+                if cat_data["snippets_using"] == 0
             ]
             
             for cat_id in categories_to_remove:
@@ -410,7 +401,7 @@ class MetadataManager:
             # Remove labels with 0 usage
             labels_to_remove = [
                 label_id for label_id, label_data in metadata["labels"]["items"].items()
-                if label_data["usage_count"] == 0
+                if label_data["snippets_using"] == 0
             ]
             
             for label_id in labels_to_remove:
@@ -426,11 +417,11 @@ class MetadataManager:
             "labels_removed": labels_removed,
             "categories_unused": len([
                 cat for cat in metadata["categories"]["items"].values()
-                if cat["usage_count"] == 0
+                if cat["snippets_using"] == 0
             ]),
             "labels_unused": len([
                 label for label in metadata["labels"]["items"].values()
-                if label["usage_count"] == 0
+                if label["snippets_using"] == 0
             ])
         }
 

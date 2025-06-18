@@ -1,0 +1,142 @@
+[
+  {
+    "title": "Summarize Key Points",
+    "content": "Extract and summarize the key points, decisions, and action items from the following",
+    "category": "Analysis",
+    "labels": ["summary", "analysis", "business"]
+  },
+  {
+    "title": "Business Email Format",
+    "content": "Format this as a professional business email with proper structure and etiquette",
+    "category": "Communication",
+    "labels": ["email", "business", "professional"]
+  },
+  {
+    "title": "Casual Friendly Tone",
+    "content": "Write in a casual, friendly tone that feels approachable and conversational",
+    "category": "Communication",
+    "labels": ["casual", "friendly", "conversational"]
+  },
+  {
+    "title": "Code Review Focus",
+    "content": "Review this code for best practices, potential bugs, and performance improvements",
+    "category": "Development",
+    "labels": ["code-review", "programming", "quality"]
+  },
+  {
+    "title": "Error Analysis",
+    "content": "Analyze this error message and provide potential causes and solutions",
+    "category": "Development",
+    "labels": ["debugging", "analysis", "troubleshooting"]
+  },
+  {
+    "title": "Step-by-Step Instructions",
+    "content": "Provide clear, step-by-step instructions that are easy to follow",
+    "category": "Documentation",
+    "labels": ["instructions", "clarity", "tutorial"],
+    "exclusive": true
+  },
+  {
+    "title": "Technical Documentation Style",
+    "content": "Write in a technical documentation style with clear explanations and examples",
+    "category": "Documentation",
+    "labels": ["technical", "documentation", "programming"],
+    "exclusive": true
+  },
+  {
+    "title": "Explain Like I'm 5",
+    "content": "Explain this concept in simple terms that anyone can understand",
+    "category": "Education",
+    "labels": ["simple", "education", "clarity"]
+  },
+  {
+    "title": "Research and Cite Sources",
+    "content": "Research this topic thoroughly and provide citations for all claims and statistics",
+    "category": "Research",
+    "labels": ["research", "citations", "academic"]
+  },
+  {
+    "title": "Creative and Engaging",
+    "content": "Write in a creative, engaging style that captures attention and maintains interest",
+    "category": "Writing_Style",
+    "labels": ["creative", "engaging", "storytelling"]
+  },
+  {
+    "title": "Dialogue Focused",
+    "content": "Write with an increased focus on dialogue to bring characters and conversations to life",
+    "category": "Writing_Style",
+    "labels": ["dialogue", "conversation", "character"]
+  },
+  {
+    "title": "Short Summary",
+    "content": "Write a short summarized paragraph that captures the main point concisely",
+    "category": "Writing_Length",
+    "labels": ["short", "summary", "concise"]
+  },
+  {
+    "title": "Medium Length",
+    "content": "Write 3-4 paragraphs with good detail and structure",
+    "category": "Writing_Length",
+    "labels": ["medium", "paragraphs", "detailed"]
+  },
+  {
+    "title": "Specific Word Count",
+    "content": "Write around 250 words with precise length control",
+    "category": "Writing_Length",
+    "labels": ["word-count", "precise", "250-words"]
+  },
+  {
+    "title": "Roleplay as Maki Nishikino",
+    "content": "Roleplay as Maki Nishikino from Love Live, maintaining her tsundere personality and passion for music",
+    "category": "roleplay_character",
+    "labels": ["character", "maki", "tsundere", "musical"]
+  },
+  {
+    "title": "Roleplay as Sherlock Holmes",
+    "content": "Roleplay as Sherlock Holmes, using his brilliant deductive reasoning and observational skills",
+    "category": "roleplay_character",
+    "labels": ["character", "detective", "logical", "observant"]
+  },
+  {
+    "title": "Roleplay as Medieval Knight",
+    "content": "Roleplay as a noble medieval knight, speaking with honor and chivalrous mannerisms",
+    "category": "roleplay_character",
+    "labels": ["character", "knight", "honor", "medieval"]
+  },
+  {
+    "title": "Voice of Sarcastic AI",
+    "content": "Write in the voice of a sarcastic AI assistant with witty, slightly cynical commentary",
+    "category": "roleplay_writing_style",
+    "labels": ["voice", "ai", "sarcastic", "witty"]
+  },
+  {
+    "title": "Voice of Wise Mentor",
+    "content": "Write in the voice of a wise mentor offering thoughtful guidance and life lessons",
+    "category": "roleplay_writing_style",
+    "labels": ["voice", "mentor", "wise", "guidance"]
+  },
+  {
+    "title": "Voice of Enthusiastic Teacher",
+    "content": "Write in the voice of an enthusiastic teacher who makes learning exciting and accessible",
+    "category": "roleplay_writing_style",
+    "labels": ["voice", "teacher", "enthusiastic", "educational"]
+  },
+  {
+    "title": "Coffee Shop Meeting",
+    "content": "Set the scene in a cozy coffee shop where two characters meet for an important conversation",
+    "category": "roleplay_scenario",
+    "labels": ["scenario", "coffee-shop", "meeting", "conversation"]
+  },
+  {
+    "title": "Mysterious Library Discovery",
+    "content": "Create a scenario where a character discovers something mysterious in an old library",
+    "category": "roleplay_scenario",
+    "labels": ["scenario", "library", "mystery", "discovery"]
+  },
+  {
+    "title": "Unexpected Reunion",
+    "content": "Write a scenario where two characters unexpectedly meet after years apart",
+    "category": "roleplay_scenario",
+    "labels": ["scenario", "reunion", "emotional", "surprise"]
+  }
+]

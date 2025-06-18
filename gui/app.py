@@ -10,6 +10,11 @@ from models.data_manager import DataManager
 from models.snippet_state import SnippetStateManager
 from utils.state_utils import get_category_selections
 from utils.ui_utils import create_tooltip
+from utils.logger import get_logger
+
+logger = get_logger(__name__)
+
+logger = get_logger(__name__)
 
 class PromptSnippetsApp(tk.Tk):
     def __init__(self):
@@ -79,11 +84,14 @@ class PromptSnippetsApp(tk.Tk):
         
         # Load initial data
         self._load_snippets()
+        
+        # Set up close handler
+        self.protocol("WM_DELETE_WINDOW", self._on_closing)
 
     def _load_snippets(self) -> None:
         """Load snippets from data manager"""
         try:
-            snippets = self.data_manager.load_snippets()
+            snippets = self.data_manager.load_snippets_for_gui()
             self.snippet_list.load_snippets(snippets)
         except Exception as e:
             messagebox.showerror("Error", f"Failed to load snippets: {str(e)}")
@@ -91,9 +99,9 @@ class PromptSnippetsApp(tk.Tk):
     def _on_selection_changed(self, selected_snippets: List[Dict]) -> None:
         """Handle snippet selection changes"""
         try:
-            print(f"Generating preview for {len(selected_snippets)} snippets")  # Debug print
+            logger.debug(f"Generating preview for {len(selected_snippets)} snippets")
             self.current_prompt_text = self._generate_preview(selected_snippets)
-            print(f"Preview text: {self.current_prompt_text}")  # Debug print
+            logger.debug(f"Preview text: {self.current_prompt_text}")
             
             # Update copy button state
             has_content = self.current_prompt_text != "No Snippets Selected"
@@ -110,7 +118,7 @@ class PromptSnippetsApp(tk.Tk):
                     self.show_prompt_btn.configure(text="👁 Show Prompt")
                 
         except Exception as e:
-            print(f"Error updating preview: {str(e)}")
+            logger.error(f"Error updating preview: {str(e)}")
             messagebox.showerror("Error", f"Failed to update preview: {str(e)}")
 
     def _on_snippet_edit(self, snippet: Dict) -> Union[bool, List[Dict]]:
@@ -118,7 +126,7 @@ class PromptSnippetsApp(tk.Tk):
         try:
             if snippet.get('reload'):
                 # Handle reload request
-                return self.data_manager.load_snippets()
+                return self.data_manager.load_snippets_for_gui()
                 
             if snippet.get('delete'):
                 # Handle deletion
@@ -131,13 +139,13 @@ class PromptSnippetsApp(tk.Tk):
                 return self.data_manager.add_snippet(snippet)
                 
         except Exception as e:
-            print(f"Error in snippet edit handler: {str(e)}")
+            logger.error(f"Error in snippet edit handler: {str(e)}")
             return False
 
     def _get_snippet_ids(self) -> set:
         """Get set of existing snippet IDs"""
         try:
-            snippets = self.data_manager.load_snippets()
+            snippets = self.data_manager.load_snippets_for_gui()
             return {s['id'] for s in snippets}
         except Exception:
             return set()
@@ -147,23 +155,23 @@ class PromptSnippetsApp(tk.Tk):
         try:
             # Extract snippet IDs from the snippet objects
             snippet_ids = [snippet['id'] for snippet in snippets]
-            print(f"Deleting snippet IDs: {snippet_ids}")  # Debug
+            logger.debug(f"Deleting snippet IDs: {snippet_ids}")
             
             if self.data_manager.delete_snippets(snippet_ids):
-                print("Successfully deleted from storage, reloading...")  # Debug
-                remaining_snippets = self.data_manager.load_snippets()
+                logger.info("Successfully deleted from storage, reloading...")
+                remaining_snippets = self.data_manager.load_snippets_for_gui()
                 self.snippet_list.load_snippets(remaining_snippets)
-                print(f"Reloaded {len(remaining_snippets)} remaining snippets")  # Debug
+                logger.info(f"Reloaded {len(remaining_snippets)} remaining snippets")
             else:
                 raise Exception("Failed to delete snippets from storage")
         except Exception as e:
-            print(f"Error in _on_snippets_delete: {str(e)}")  # Debug
+            logger.error(f"Error in _on_snippets_delete: {str(e)}")
             messagebox.showerror("Error", f"Error deleting snippets: {str(e)}")
 
     def _on_clone_snippet(self, snippet_id: str) -> None:
         """Handle snippet cloning"""
         try:
-            snippets = self.data_manager.load_snippets()
+            snippets = self.data_manager.load_snippets_for_gui()
             original = next((s for s in snippets if s['id'] == snippet_id), None)
             
             if original:
@@ -224,7 +232,7 @@ class PromptSnippetsApp(tk.Tk):
                 self.show_prompt_btn.configure(text="👁 Hide Prompt")
                 
         except Exception as e:
-            print(f"Error toggling prompt window: {str(e)}")
+            logger.error(f"Error toggling prompt window: {str(e)}")
             # Reset state in case of error
             self.prompt_window = None
             self.show_prompt_btn.configure(text="👁 Show Prompt")
@@ -237,15 +245,22 @@ class PromptSnippetsApp(tk.Tk):
                 self.clipboard_clear()
                 self.clipboard_append(self.current_prompt_text)
                 
+                logger.info(f"📋 Copied {len(self.current_prompt_text)} characters to clipboard")
+                
                 # Brief visual feedback
                 original_text = self.copy_btn.cget('text')
                 self.copy_btn.configure(text="✓ Copied!")
                 self.after(1000, lambda: self.copy_btn.configure(text=original_text))
                 
         except Exception as e:
-            print(f"Error copying to clipboard: {str(e)}")
+            logger.error(f"Error copying to clipboard: {str(e)}")
             messagebox.showerror("Error", f"Failed to copy to clipboard: {str(e)}")
 
     def run(self) -> None:
         """Start the application"""
         self.mainloop()
+        
+    def _on_closing(self) -> None:
+        """Handle application closing"""
+        logger.info("👋 Application closing...")
+        self.destroy()
