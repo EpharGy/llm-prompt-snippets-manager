@@ -21,9 +21,6 @@ class ScrollableBubbleFrame(ttk.Frame):
         self.scrollbar = ttk.Scrollbar(self, orient="vertical", command=self.canvas.yview)
         self.scrollable_frame = ttk.Frame(self.canvas)
         
-        # Expose canvas as scrollable_canvas for button mouse wheel traversal
-        self.scrollable_canvas = self.canvas  # Alias for compatibility
-        
         # Configure canvas
         self.canvas.configure(yscrollcommand=self.scrollbar.set)
         self.canvas.bind('<Configure>', self._on_canvas_configure)
@@ -41,8 +38,7 @@ class ScrollableBubbleFrame(ttk.Frame):
         # Start with minimum height (1 row) and disable pack propagation for height control
         self.configure(height=self.row_height, width=200)  # Set minimum width
         self.pack_propagate(False)
-        
-    def _calculate_row_height(self):
+          def _calculate_row_height(self):
         """Calculate row height based on current font size"""
         try:
             # Get the current font size from the parent's font manager
@@ -54,12 +50,15 @@ class ScrollableBubbleFrame(ttk.Frame):
             while parent and not hasattr(parent, 'font_manager'):
                 parent = parent.master
                 
-            if parent and hasattr(parent, 'font_manager'):
+            if parent and hasattr(parent, 'font_manager') and parent.font_manager:
                 try:
                     base_font_size = parent.font_manager._calculate_font_size('default') - 1  # type: ignore
                     base_font_size = max(6, base_font_size)
-                except AttributeError as e:
+                except (AttributeError, TypeError) as e:
                     logger.debug(f"Font manager access failed, using default base size: {e}")
+            else:
+                logger.debug("No font manager found, using default base size")
+                # Use a reasonable default when font manager is not available
                     
             # Calculate row height with progressive scaling from Small's perfect spacing
             # Button height: font_size + internal padding (borders, etc.)
@@ -95,6 +94,19 @@ class ScrollableBubbleFrame(ttk.Frame):
     def add_child(self, widget):
         """Add a child widget to be wrapped"""
         self.child_widgets.append(widget)
+        
+        # Bind scroll wheel events to forward to our canvas
+        # (Based on original working implementation)
+        def on_scroll(event):
+            if self.scrollbar.winfo_viewable():
+                self.canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+            return "break"
+        
+        # Bind both Windows and Linux scroll wheel events to the widget
+        widget.bind("<MouseWheel>", on_scroll)        # Windows
+        widget.bind("<Button-4>", lambda e: on_scroll(type('obj', (object,), {'delta': 120})()))  # Linux scroll up
+        widget.bind("<Button-5>", lambda e: on_scroll(type('obj', (object,), {'delta': -120})()))  # Linux scroll down
+        
         self.after_idle(self._relayout)
         
     def clear_children(self):

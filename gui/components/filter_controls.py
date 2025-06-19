@@ -121,8 +121,7 @@ class FilterControls(ttk.Frame):
     
     def _set_button_selected_category(self, btn: tk.Button):
         """Set button to selected category style (blue)"""
-        btn.configure(
-            bg="#2196F3",
+        btn.configure(            bg="#2196F3",
             fg="white", 
             activebackground="#1976D2",
             activeforeground="white",
@@ -166,6 +165,39 @@ class FilterControls(ttk.Frame):
             cursor="hand2",
             command=lambda: self._toggle_bubble_filter(filter_type, filter_value, btn)
         )
+        
+        # Bind scroll wheel events to forward to parent scrollable container
+        def on_scroll(event):
+            # Find the scrollable container by traversing up the parent hierarchy
+            widget = btn
+            while widget:
+                # Check if it's a scrollable widget
+                if hasattr(widget, 'yview_scroll'):
+                    try:
+                        yview_scroll = getattr(widget, 'yview_scroll', None)
+                        if yview_scroll:
+                            yview_scroll(int(-1 * (event.delta / 120)), "units")
+                            break
+                    except (AttributeError, tk.TclError) as e:
+                        logger.debug(f"Scroll handling failed for widget: {e}")
+                        pass
+                # Check if it's our WrappingFrame with scrollable_canvas
+                elif hasattr(widget, 'scrollable_canvas'):
+                    try:
+                        scrollable_canvas = getattr(widget, 'scrollable_canvas', None)
+                        if scrollable_canvas and hasattr(scrollable_canvas, 'yview_scroll'):
+                            scrollable_canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+                            break
+                    except (AttributeError, tk.TclError) as e:
+                        logger.debug(f"Scrollable canvas handling failed: {e}")
+                        pass
+                widget = widget.master
+            return "break"
+        
+        # Bind both Windows and Linux scroll wheel events
+        btn.bind("<MouseWheel>", on_scroll)        # Windows
+        btn.bind("<Button-4>", lambda e: on_scroll(type('obj', (object,), {'delta': 120})()))  # Linux scroll up
+        btn.bind("<Button-5>", lambda e: on_scroll(type('obj', (object,), {'delta': -120})()))  # Linux scroll down
         
         # Don't pack here - parent component will handle positioning
         return btn

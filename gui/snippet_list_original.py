@@ -11,6 +11,7 @@ from utils.font_manager import get_font_manager
 from gui.snippet_dialog import SnippetDialog
 from gui.components.scrollable_bubble_frame import ScrollableBubbleFrame
 from gui.components.filter_controls import FilterControls
+from gui.components.tree_operations import TreeOperations
 from gui.mixins.font_mixin import FontMixin
 from utils.logger import get_logger
 
@@ -178,14 +179,13 @@ class SnippetList(ttk.Frame, FontMixin):
         """Create tree view with scrollbar"""
         container = ttk.Frame(self.content_frame)
         container.pack(fill='both', expand=True, padx=5)
-        
-        # Create tree with initial style
+          # Create tree with initial style
         self.tree = ttk.Treeview(
             container,
             columns=('Symbol', 'Name', 'Category', 'Exclusive', 'Labels'),
             show='headings',
             style='Normal.Treeview',
-            selectmode='browse'  # Single selection mode
+            selectmode='extended'  # Multi-selection mode
         )
         
         # Configure columns
@@ -204,10 +204,41 @@ class SnippetList(ttk.Frame, FontMixin):
         
         self.tree.configure(yscrollcommand=scrollbar.set)
         self.tree.pack(side='left', fill='both', expand=True)
-          # Bind events - using <Button-1> instead of <ButtonRelease-1> for more immediate response
-        self.tree.bind('<Button-1>', self._on_tree_click)
-        self.tree.bind('<Double-1>', self._on_tree_double_click)
+          # Initialize TreeOperations component
+        self.tree_ops = TreeOperations(
+            self.tree, 
+            on_selection_changed=self._on_tree_selection_changed,
+            on_snippet_edit=self._on_snippet_edit_request
+        )
     
+    def _on_tree_selection_changed(self, selected_ids: List[str]):
+        """Handle tree selection changes and convert IDs to full snippet data"""
+        try:
+            # Convert snippet IDs to full snippet data
+            selected_snippets = []
+            for snippet_id in selected_ids:
+                if snippet_id in self.all_snippets:
+                    selected_snippets.append(self.all_snippets[snippet_id])
+                else:
+                    logger.warning(f"🚨 Selected snippet ID not found: {snippet_id}")
+            
+            logger.debug(f"🎯 Converted {len(selected_ids)} IDs to {len(selected_snippets)} snippet objects")
+            
+            # Call the parent callback with full snippet data
+            if self.on_selection_changed:
+                self.on_selection_changed(selected_snippets)
+                
+        except Exception as e:
+            logger.error(f"Failed to handle tree selection change: {str(e)}")
+
+    def _on_snippet_edit_request(self, snippet_id: str):
+        """Handle snippet edit request from TreeOperations"""
+        if self.on_snippet_edit:
+            # Find the snippet data
+            snippet = self.all_snippets.get(snippet_id)
+            if snippet:
+                self.on_snippet_edit(snippet)
+
     def _create_tooltips(self):
         """Create tooltips for UI elements"""
         if DEBUG_MODE:
@@ -217,7 +248,115 @@ class SnippetList(ttk.Frame, FontMixin):
         create_tooltip(self.delete_btn, "Delete selected snippet (double-click to edit/delete)")
         create_tooltip(self.clear_btn, "Clear all selections")
         create_tooltip(self.search_entry, "Search by name, category, labels, or prompt text")        # FilterControls handles its own tooltips
-    
+
+    def _create_bubble_button(self, parent, text, filter_type, filter_value):
+        """Create a clickable bubble button with custom styling"""
+        # Calculate initial font size based on current scale
+        bubble_size = self.font_manager._calculate_font_size('default') - 1
+        bubble_size = max(6, bubble_size)  # Minimum size of 6
+        initial_font = ('TkDefaultFont', bubble_size)
+        
+        # Use tk.Button instead of ttk.Button for better color control
+        btn = tk.Button(
+            parent,
+            text=text,
+            width=len(text) + 2,
+            bg="#f0f0f0",           # Unselected background
+            fg="#333333",           # Unselected text
+            activebackground="#e0e0e0",  # Hover background
+            activeforeground="#000000",  # Hover text
+            relief="raised",
+            borderwidth=2,          # Keep consistent border width
+            font=initial_font,
+            cursor="hand2",
+            command=lambda: self._toggle_bubble_filter(filter_type, filter_value, btn)
+        )
+        
+        # Bind scroll wheel events to forward to parent scrollable container
+        def on_scroll(event):
+            # Find the scrollable container by traversing up the parent hierarchy
+            widget = btn
+            while widget:                # Check if it's a scrollable widget
+                if hasattr(widget, 'yview_scroll'):
+                    try:
+                        yview_scroll = getattr(widget, 'yview_scroll', None)
+                        if yview_scroll:
+                            yview_scroll(int(-1 * (event.delta / 120)), "units")
+                            break
+                    except (AttributeError, tk.TclError) as e:
+                        logger.debug(f"Scroll handling failed for widget: {e}")
+                        pass                # Check if it's our WrappingFrame with scrollable_canvas
+                elif hasattr(widget, 'scrollable_canvas'):
+                    try:
+                        scrollable_canvas = getattr(widget, 'scrollable_canvas', None)
+                        if scrollable_canvas and hasattr(scrollable_canvas, 'yview_scroll'):
+                            scrollable_canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+                            break
+                    except (AttributeError, tk.TclError) as e:
+                        logger.debug(f"Scrollable canvas handling failed: {e}")
+                        pass
+                widget = widget.master
+            return "break"
+        
+        # Bind both Windows and Linux scroll wheel events
+        btn.bind("<MouseWheel>", on_scroll)        # Windows
+        btn.bind("<Button-4>", lambda e: on_scroll(type('obj', (object,), {'delta': 120})()))  # Linux scroll up
+        btn.bind("<Button-5>", lambda e: on_scroll(type('obj', (object,), {'delta': -120})()))  # Linux scroll down
+        
+        # Don't pack here - WrappingFrame will handle positioning
+        return btn
+        
+    def _toggle_bubble_filter(self, filter_type, filter_value, button):
+        """Toggle a bubble filter on/off with visual feedback"""
+        if filter_type == 'category':
+            if filter_value in self.active_category_filters:
+                self.active_category_filters.remove(filter_value)
+                # Reset to unselected style
+                button.configure(
+                    bg="#f0f0f0", 
+                    fg="#333333",
+                    activebackground="#e0e0e0",
+                    activeforeground="#000000",
+                    relief="raised",
+                    borderwidth=2          # Keep consistent border
+                )
+            else:
+                self.active_category_filters.add(filter_value)
+                # Set to selected category style (blue)
+                button.configure(
+                    bg="#2196F3",
+                    fg="white", 
+                    activebackground="#1976D2",
+                    activeforeground="white",
+                    relief="raised",       # Use raised relief for selected
+                    borderwidth=2          # Keep consistent border
+                )
+        elif filter_type == 'label':
+            if filter_value in self.active_label_filters:
+                self.active_label_filters.remove(filter_value)
+                # Reset to unselected style
+                button.configure(
+                    bg="#f0f0f0",
+                    fg="#333333",
+                    activebackground="#e0e0e0", 
+                    activeforeground="#000000",
+                    relief="raised",
+                    borderwidth=2          # Keep consistent border
+                )
+            else:
+                self.active_label_filters.add(filter_value)
+                # Set to selected label style (green)
+                button.configure(
+                    bg="#4CAF50",
+                    fg="white",
+                    activebackground="#388E3C",
+                    activeforeground="white", 
+                    relief="raised",       # Use raised relief for selected
+                    borderwidth=2          # Keep consistent border
+                )
+                
+        self._apply_bubble_filters()
+        
     def _apply_bubble_filters(self):
         """Apply current bubble filters to snippet list"""
         # Check if we have active text search
@@ -228,10 +367,9 @@ class SnippetList(ttk.Frame, FontMixin):
             if has_text_search:
                 # Let text search handle filtering
                 self._on_search_changed()
-            else:
-                # Show all snippets - clear visual selection to avoid multi-highlighting during filter transitions
+            else:                # Show all snippets - clear visual selection to avoid multi-highlighting during filter transitions
                 self.state_manager.clear_search_filter()
-                self._refresh_tree_view(preserve_selections=False)
+                self.tree_ops.refresh_tree_view(self.all_snippets, preserve_selections=False)
             return
             
         # Get bubble filtered IDs
@@ -251,11 +389,9 @@ class SnippetList(ttk.Frame, FontMixin):
             filter_desc = f"Text: '{search_text}' + {self._get_filter_description()}"
         else:
             final_matching_ids = bubble_matching_ids
-            filter_desc = self._get_filter_description()
-          # Apply filter - clear visual selection since we're filtering
-        self.state_manager.set_search_filter(filter_desc, final_matching_ids)
-        self._refresh_tree_view(preserve_selections=False)
-        
+            filter_desc = self._get_filter_description()        # Apply filter - clear visual selection since we're filtering        self.state_manager.set_search_filter(filter_desc, final_matching_ids)
+        self.tree_ops.refresh_tree_view(self.all_snippets, preserve_selections=False)
+    
     def _get_filter_description(self):
         """Get a description of current filters for display"""
         parts = []
@@ -265,74 +401,10 @@ class SnippetList(ttk.Frame, FontMixin):
             parts.append(f"Labels: {', '.join(sorted(self.active_label_filters))}")
         
         if not parts:
-            return ""            
+            return ""
+            
         mode = self.filter_mode_var.get()
         return f"[{mode}] " + f" {mode} ".join(parts)
-    
-    def _on_tree_click(self, event):
-        """Handle single click on tree item"""
-        region = self.tree.identify("region", event.x, event.y)
-        column = self.tree.identify_column(event.x)
-        item = self.tree.identify_row(event.y)
-        
-        if not item:
-            return
-            
-        if self.delete_mode:
-            # In delete mode, handle selection differently
-            return self._handle_delete_mode_click(item)
-            
-        try:
-            snippet = self.snippets.get(item)
-            if not snippet:
-                return
-                  # Handle state changes only when clicking symbol column
-            if region == "cell" and column == '#1':
-                # Check for exclusivity conflicts
-                current_state = self.state_manager.get_state(snippet['id'])
-                is_selecting = current_state != SnippetState.SELECTED
-                
-                if is_selecting and self._has_selection_conflict(snippet):
-                    messagebox.showwarning(
-                        "Selection Conflict",
-                        f"Cannot select this snippet: An exclusive snippet is already selected in category '{snippet['category']}'.\n\n"
-                        "You must deselect the existing snippet first."
-                    )
-                    return
-                
-                # Toggle selection state
-                new_state = (SnippetState.SELECTED 
-                           if current_state != SnippetState.SELECTED 
-                           else SnippetState.UNSELECTED)
-                
-                self.state_manager.set_state(
-                    snippet['id'], 
-                    new_state,
-                    snippet['category'],
-                    snippet['exclusive']
-                )
-                self._update_item_display(item)
-                self._notify_selection_changed()
-                    
-        except Exception as e:
-            logger.error(f"❌ Failed to handle snippet selection click: {str(e)}")
-            logger.debug(f"🔧 Click handler error traceback: {traceback.format_exc()}")
-
-    def _has_selection_conflict(self, snippet: Dict) -> bool:
-        """Check if selecting this snippet would violate exclusivity rules"""
-        # If this snippet isn't exclusive and we're not trying to select it, no conflict
-        if not snippet['exclusive']:
-            return False
-            
-        # Check for any other selected snippets in the same category using all_snippets
-        for existing in self.all_snippets.values():
-            if (existing['category'] == snippet['category'] and 
-                existing['id'] != snippet['id'] and
-                existing['id'] in self.state_manager.selected_ids):
-                return True
-        
-        # No conflicts found
-        return False
 
     def _on_tree_double_click(self, event):
         """Handle double click for editing"""
@@ -387,7 +459,8 @@ class SnippetList(ttk.Frame, FontMixin):
         
         if search_text == "search snippets...":
             return
-                      # Handle empty search - check if we have bubble filters
+            
+        # Handle empty search - check if we have bubble filters
         if not search_text:
             # If we have active bubble filters, reapply them, otherwise show all
             if self.active_category_filters or self.active_label_filters:
@@ -395,7 +468,7 @@ class SnippetList(ttk.Frame, FontMixin):
             else:
                 # No search text and no bubble filters - but this is a transition from search, so clear visual selection
                 self.state_manager.set_search_filter('', set(self.all_snippets.keys()))
-                self._refresh_tree_view(preserve_selections=False)
+                self.tree_ops.refresh_tree_view(self.all_snippets, preserve_selections=False)
             return
                     
         # Combine text search with bubble filters
@@ -434,7 +507,7 @@ class SnippetList(ttk.Frame, FontMixin):
             bubble_desc = self._get_filter_description()
             filter_desc += f" + {bubble_desc}"        # Update state and refresh - clear visual selection since we're searching
         self.state_manager.set_search_filter(filter_desc, final_matching_ids)
-        self._refresh_tree_view(preserve_selections=False)
+        self.tree_ops.refresh_tree_view(self.all_snippets, preserve_selections=False)
         
     def _get_bubble_filtered_ids(self):
         """Get snippet IDs that match current bubble filters"""
@@ -481,58 +554,7 @@ class SnippetList(ttk.Frame, FontMixin):
             self.search_var.set("Search snippets...")
             self.search_entry.config(foreground='gray')            # Clear any lingering filter
             self.state_manager.set_search_filter('', set())
-            self._refresh_tree_view(preserve_selections=False)  # Clear visual selection on focus out
-
-    def _refresh_tree_view(self, preserve_selections=True):
-        """Refresh tree view display
-        
-        Args:
-            preserve_selections: If True, restore visual selection highlighting (default)
-        """
-        
-        # Store current selections from state manager
-        selected_ids = set(self.state_manager.selected_ids)
-        
-        # Clear tree and snippet mapping
-        self.tree.delete(*self.tree.get_children())
-        self.snippets.clear()
-        
-        # Clear any existing visual selection
-        self.tree.selection_remove(self.tree.selection())
-        
-        # Determine which snippets to display
-        display_snippets = {}
-        if self.state_manager.is_filtered:
-            # Show only filtered snippets
-            for snippet_id in self.state_manager.filtered_ids:
-                if snippet_id in self.all_snippets:
-                    display_snippets[snippet_id] = self.all_snippets[snippet_id]
-            print(f"Showing {len(display_snippets)} filtered snippets")  # Debug
-        else:
-            # Show all snippets
-            display_snippets = dict(self.all_snippets)  # Make a copy
-            print(f"Showing all snippets ({len(display_snippets)} total)")  # Debug
-        
-        # Add snippets to tree
-        for snippet_id, snippet in display_snippets.items():
-            item_id = self._add_snippet_to_tree(snippet)
-            self.snippets[item_id] = snippet
-            
-            # Only restore visual selection if not clearing it
-            if preserve_selections and snippet_id in selected_ids:
-                self.tree.selection_add(item_id)
-                
-        # Update all item displays to show correct state
-        for item_id in self.tree.get_children():
-            snippet = self.snippets.get(item_id)
-            if snippet and snippet['id'] in selected_ids:
-                self.state_manager.set_state(
-                    snippet['id'],
-                    SnippetState.SELECTED,
-                    snippet['category'],
-                    snippet['exclusive']
-                )
-            self._update_item_display(item_id)
+            self.tree_ops.refresh_tree_view(self.all_snippets, preserve_selections=False)  # Clear visual selection on focus out
 
     def _update_item_display(self, item_id: str):
         """Update display of a single tree item"""
@@ -548,22 +570,6 @@ class SnippetList(ttk.Frame, FontMixin):
     def _get_symbol_for_state(self, state: SnippetState) -> str:
         """Get display symbol for state"""
         return self.SYMBOL_SELECTED if state == SnippetState.SELECTED else self.SYMBOL_UNSELECTED
-
-    def _add_snippet_to_tree(self, snippet: Dict) -> str:
-        """Add single snippet to tree and return item ID"""
-        state = self.state_manager.get_state(snippet['id'])
-        symbol = self._get_symbol_for_state(state)
-        
-        item_id = self.tree.insert('', 'end', values=(
-            symbol,
-            snippet['name'],
-            snippet['category'],
-            '✓' if snippet['exclusive'] else '',
-            ', '.join(snippet['labels'])
-        ))
-        
-        return item_id
-
     def _edit_selected(self):
         """Edit currently selected snippet"""
         selected = [s for s in self.snippets.values() 
@@ -605,9 +611,8 @@ class SnippetList(ttk.Frame, FontMixin):
         
         # Clear filter state
         self.state_manager.clear_search_filter()
-        
-        # Refresh view and notify if needed
-        self._refresh_tree_view()
+          # Refresh view and notify if needed
+        self.tree_ops.refresh_tree_view(self.all_snippets)
         if was_filtered:
             self._notify_selection_changed()
 
@@ -642,9 +647,8 @@ class SnippetList(ttk.Frame, FontMixin):
         for snippet in snippets:
             self.all_snippets[snippet['id']] = snippet
             
-        # Then display them and restore selections
-        for snippet in snippets:
-            item_id = self._add_snippet_to_tree(snippet)
+        # Then display them and restore selections        for snippet in snippets:
+            item_id = self.tree_ops.add_snippet_to_tree(snippet)
             self.snippets[item_id] = snippet
             
             # If this snippet was selected, restore its state
@@ -691,11 +695,9 @@ class SnippetList(ttk.Frame, FontMixin):
                     raise Exception("Failed to save to storage")
                 
             # Store in our collections
-            self.all_snippets[snippet['id']] = snippet.copy()
-
-            # Always use the smart refresh logic that preserves state properly
+            self.all_snippets[snippet['id']] = snippet.copy()            # Always use the smart refresh logic that preserves state properly
             logger.debug("Refreshing view with smart state preservation")
-            self._refresh_tree_view()
+            self.tree_ops.refresh_tree_view(self.all_snippets)
               # Always refresh bubble filters to include any new categories/labels
             logger.debug("Updating filter options with new categories/labels")
             self.filter_controls.refresh_bubble_filters(self.all_snippets)
@@ -727,10 +729,9 @@ class SnippetList(ttk.Frame, FontMixin):
             for item_id, tree_snippet in self.snippets.items():
                 if tree_snippet['id'] == snippet['id']:
                     self.snippets[item_id] = snippet.copy()
-                    
-            # Refresh view and notify about selection changes
+                      # Refresh view and notify about selection changes
             logger.debug("Refreshing display and selection state")
-            self._refresh_tree_view()
+            self.tree_ops.refresh_tree_view(self.all_snippets)
             self._notify_selection_changed()  # Ensure preview updates
               # Refresh bubble filters in case categories/labels changed
             logger.debug("Updating filter options after changes")
@@ -785,9 +786,8 @@ class SnippetList(ttk.Frame, FontMixin):
                     for item_id in items_to_remove:
                         self.snippets.pop(item_id, None)
             
-            # Refresh display and notify any selection changes
-            logger.debug("Refreshing display after deletion")
-            self._refresh_tree_view()
+            # Refresh display and notify any selection changes            logger.debug("Refreshing display after deletion")
+            self.tree_ops.refresh_tree_view(self.all_snippets)
             self._notify_selection_changed()
             
             # Refresh bubble filters in case categories/labels are no longer used            logger.debug("Updating filter options after deletion")
@@ -997,35 +997,15 @@ class SnippetList(ttk.Frame, FontMixin):
     def _refresh_ui(self):
         """Refresh the UI after state changes"""
         selected_before = set(self.tree.selection())
-        
-        # Clear and repopulate tree
+          # Clear and repopulate tree
         self.tree.delete(*self.tree.get_children())
-        self._populate_tree()
+        self.tree_ops.populate_tree(self.all_snippets)
         
         # Restore selections that still exist
         for item_id in selected_before:
             if item_id in self.snippets:
                 self.tree.selection_add(item_id)
-                
-    def _populate_tree(self):
-        """Populate the tree with current snippets"""
-        # Sort snippets by category and name
-        sorted_snippets = sorted(
-            self.snippets.values(),
-            key=lambda x: (x.get('category', ''), x.get('name', ''))
-        )
-        
-        # Add to tree
-        for snippet in sorted_snippets:
-            values = (
-                self.SYMBOL_SELECTED if snippet['id'] in self.state_manager.selected_ids 
-                else self.SYMBOL_UNSELECTED,
-                snippet.get('name', ''),
-                snippet.get('category', ''),
-                '✓' if snippet.get('exclusive') else '',
-                ', '.join(snippet.get('labels', []))
-            )
-            self.tree.insert('', 'end', iid=snippet['id'], values=values)
+              
 
     def get_selected_snippets(self):
         """Get currently selected snippets"""
@@ -1153,13 +1133,12 @@ class SnippetList(ttk.Frame, FontMixin):
               # Skip button font updates to avoid type checker issues
             # Regular UI buttons use centralized static fonts which work well across displays
             logger.debug(f"Regular UI buttons using static fonts (type-safe): {static_button_font}")
-            
-            # Apply fonts to filter labels (these work without type issues)
+              # Apply fonts to filter labels (these work without type issues)
             self._apply_fonts_to_filter_labels()
             
             # Apply dynamic fonts to filter bubbles (tk.Button widgets support this)
             self._apply_fonts_to_bubbles()
-            
+                
             logger.debug("Fonts applied to SnippetList components")
             
         except Exception as e:
@@ -1168,12 +1147,8 @@ class SnippetList(ttk.Frame, FontMixin):
     def _apply_fonts_to_filter_labels(self):
         """Apply fonts to filter section labels"""
         try:
-            default_font = self.font_manager.get_font_tuple('default')
-            
-            # Find and update filter labels recursively through FilterControls
-            if hasattr(self, 'filter_controls'):
-                for widget in self.filter_controls.winfo_children():
-                    self._update_labels_recursive(widget, default_font)
+            # FilterControls manages its own fonts via FontMixin
+            logger.debug("Filter labels managed by FilterControls component")
                     
         except Exception as e:
             logger.debug(f"Error applying fonts to filter labels: {str(e)}")
@@ -1184,9 +1159,12 @@ class SnippetList(ttk.Frame, FontMixin):
             if isinstance(widget, ttk.Label):
                 try:
                     widget.configure(font=font_tuple)
-                except tk.TclError:                    pass  # Widget doesn't support font option
+                except tk.TclError:
+                    pass  # Widget doesn't support font option
+            
             # Recurse to children
-            for child in widget.winfo_children():                self._update_labels_recursive(child, font_tuple)
+            for child in widget.winfo_children():
+                self._update_labels_recursive(child, font_tuple)
                 
         except tk.TclError as e:
             logger.debug(f"TclError updating labels: {e}")
@@ -1198,27 +1176,8 @@ class SnippetList(ttk.Frame, FontMixin):
     def _apply_fonts_to_bubbles(self):
         """Apply dynamic fonts to bubble filter buttons"""
         try:
-            # Get dynamic font size for bubbles (slightly smaller than default)
-            bubble_size = self.font_manager._calculate_font_size('default') - 1
-            bubble_size = max(6, bubble_size)  # Minimum size of 6
-            bubble_font = ('TkDefaultFont', bubble_size)
-            
-            # Update all bubble buttons through FilterControls
-            if hasattr(self, 'filter_controls'):
-                # Update category buttons
-                for btn in self.filter_controls.category_buttons.values():
-                    btn.configure(font=bubble_font)
-                # Update label buttons  
-                for btn in self.filter_controls.label_buttons.values():
-                    btn.configure(font=bubble_font)
-                
-                # Update bubble container row heights to match new font size
-                if hasattr(self.filter_controls, 'categories_bubble_frame'):
-                    self.filter_controls.categories_bubble_frame.update_row_height()
-                if hasattr(self.filter_controls, 'labels_bubble_frame'):
-                    self.filter_controls.labels_bubble_frame.update_row_height()
-            
-            logger.debug(f"Filter bubble buttons updated to dynamic font: {bubble_font}")
+            # FilterControls handles its own font management via the FontMixin
+            logger.debug("Filter bubble fonts managed by FilterControls component")
                     
         except Exception as e:
             logger.debug(f"Error applying fonts to bubble buttons: {str(e)}")
@@ -1261,7 +1220,7 @@ class SnippetList(ttk.Frame, FontMixin):
             else:
                 # Show all snippets
                 self.state_manager.clear_search_filter()
-                self._refresh_tree_view(preserve_selections=False)
+                self.tree_ops.refresh_tree_view(self.all_snippets, preserve_selections=False)
             return
             
         # Get bubble filtered IDs
@@ -1282,7 +1241,10 @@ class SnippetList(ttk.Frame, FontMixin):
         else:
             final_matching_ids = bubble_matching_ids
             filter_desc = self.filter_controls.get_filter_description()
-        
-        # Apply filter
+          # Apply filter
         self.state_manager.set_search_filter(filter_desc, final_matching_ids)
-        self._refresh_tree_view(preserve_selections=False)
+        self.tree_ops.refresh_tree_view(self.all_snippets, preserve_selections=False)
+
+    def _get_selected_ids(self) -> Set[str]:
+        """Get set of currently selected snippet IDs from state manager"""
+        return set(self.state_manager.selected_ids)
