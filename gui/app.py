@@ -9,10 +9,8 @@ from gui.prompt_window import PromptWindow
 from models.data_manager import DataManager
 from models.snippet_state import SnippetStateManager
 from utils.state_utils import get_category_selections
-from utils.ui_utils import create_tooltip
+from utils.ui_utils import create_tooltip, set_app_icon
 from utils.logger import get_logger
-
-logger = get_logger(__name__)
 
 logger = get_logger(__name__)
 
@@ -24,9 +22,7 @@ class PromptSnippetsApp(tk.Tk):
         self.geometry("1200x800")
         
         # Set application icon
-        icon_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'assets', 'icons', 'app_icon.ico')
-        if os.path.exists(icon_path):
-            self.iconbitmap(icon_path)
+        set_app_icon(self)
         
         # Remove fullscreen
         # self.state('zoomed')  # Remove this line

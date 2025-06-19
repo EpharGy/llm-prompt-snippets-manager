@@ -1,6 +1,6 @@
 import tkinter as tk
 from tkinter import ttk
-from utils.ui_utils import create_tooltip
+from utils.ui_utils import create_tooltip, set_app_icon
 from utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -15,6 +15,9 @@ class PromptWindow(tk.Toplevel):
         self.title("Prompt Preview")
         self.geometry("600x300")
         self.resizable(True, True)
+        
+        # Set application icon
+        set_app_icon(self)
         
         # Configure window to stay on top but not be modal
         self.transient(parent)

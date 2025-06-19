@@ -32,7 +32,9 @@
 **Status**: In Progress - Post-release refinement and bug fixes
 
 1. **Bug Fixes & Edge Cases**
-   - [ ] **CRITICAL**: Fix selection highlighting bug - all snippets appear highlighted after clearing filters
+   - [x] **HIGH PRIORITY**: Fix selection highlighting bug - all snippets appear highlighted after clearing filters
+   - [x] **UI Layout**: Move search box below snippet list for logical grouping of filter controls
+   - [x] **Icon Consistency**: Apply custom app icon to all windows (main, prompt preview, add/edit dialog)
    - [ ] Fix any user-reported issues from initial release
    - [ ] Handle edge cases in data validation
    - [ ] Improve error messaging and user feedback

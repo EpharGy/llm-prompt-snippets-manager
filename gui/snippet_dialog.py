@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 from typing import Dict, Optional
 from uuid import uuid4
+from utils.ui_utils import set_app_icon
 
 class SnippetDialog(tk.Toplevel):
     def __init__(self, parent, snippet: Optional[Dict] = None, is_edit: bool = False):
@@ -27,13 +28,15 @@ class SnippetDialog(tk.Toplevel):
         self.labels_var = tk.StringVar(value=self.original_values.get('labels', ''))
         self.prompt_var = tk.StringVar(value=self.original_values.get('prompt_text', ''))
         self.exclusive_var = tk.BooleanVar(value=self.original_values.get('exclusive', False))
-        
-        # Configure window
+          # Configure window
         self.title("Edit Snippet" if is_edit else "New Snippet")
         self.geometry("300x250")
         self.transient(parent)
         self.grab_set()
         self.resizable(True, False)
+        
+        # Set application icon
+        set_app_icon(self)
         
         # Bind variables to change detection
         if is_edit:

@@ -249,14 +249,14 @@ class SnippetList(ttk.Frame):
             'labels': ['test', 'advanced', 'example'],
             'prompt_text': 'This is a test prompt 2\nWith multiple lines\nAnd formatting',
             'exclusive': True,
-            'description': 'A more complex test snippet with multiple lines and exclusive flag'
-        }
+            'description': 'A more complex test snippet with multiple lines and exclusive flag'        }
         self._add_new_snippet(test_snippet)
+        
     def _create_ui(self):
         """Create all UI elements"""
         self._create_header_frame()
-        self._create_search_frame()
         self._create_tree_view()
+        self._create_search_frame()
         self._create_filter_section()
         self._create_tooltips()
         
@@ -304,7 +304,7 @@ class SnippetList(ttk.Frame):
     def _create_search_frame(self):
         """Create search entry"""
         search_frame = ttk.Frame(self.content_frame)
-        search_frame.pack(fill='x', padx=5, pady=(0, 5))
+        search_frame.pack(fill='x', padx=5, pady=(10, 5))
         
         self.search_entry = ttk.Entry(search_frame, textvariable=self.search_var)
         self.search_entry.insert(0, "Search snippets...")
@@ -558,8 +558,7 @@ class SnippetList(ttk.Frame):
         # Check if we have active text search
         search_text = self.search_var.get().strip().lower()
         has_text_search = search_text and search_text != "search snippets..."
-        
-        # If no bubble filters are active
+          # If no bubble filters are active
         if not self.active_category_filters and not self.active_label_filters:
             if has_text_search:
                 # Let text search handle filtering
@@ -567,7 +566,7 @@ class SnippetList(ttk.Frame):
             else:
                 # Show all snippets - clear visual selection to avoid multi-highlighting during filter transitions
                 self.state_manager.clear_search_filter()
-                self._refresh_tree_view(clear_visual_selection=True)
+                self._refresh_tree_view(preserve_selections=False)
             return
             
         # Get bubble filtered IDs
@@ -588,10 +587,9 @@ class SnippetList(ttk.Frame):
         else:
             final_matching_ids = bubble_matching_ids
             filter_desc = self._get_filter_description()
-        
-        # Apply filter - clear visual selection since we're filtering
+          # Apply filter - clear visual selection since we're filtering
         self.state_manager.set_search_filter(filter_desc, final_matching_ids)
-        self._refresh_tree_view(clear_visual_selection=True)
+        self._refresh_tree_view(preserve_selections=False)
         
     def _get_filter_description(self):
         """Get a description of current filters for display"""
@@ -786,8 +784,7 @@ class SnippetList(ttk.Frame):
         
         if search_text == "search snippets...":
             return
-                    
-        # Handle empty search - check if we have bubble filters
+                      # Handle empty search - check if we have bubble filters
         if not search_text:
             # If we have active bubble filters, reapply them, otherwise show all
             if self.active_category_filters or self.active_label_filters:
@@ -795,7 +792,7 @@ class SnippetList(ttk.Frame):
             else:
                 # No search text and no bubble filters - but this is a transition from search, so clear visual selection
                 self.state_manager.set_search_filter('', set(self.all_snippets.keys()))
-                self._refresh_tree_view(clear_visual_selection=True)
+                self._refresh_tree_view(preserve_selections=False)
             return
                     
         # Combine text search with bubble filters
@@ -832,11 +829,9 @@ class SnippetList(ttk.Frame):
         filter_desc = f"Text: '{search_text}'"
         if self.active_category_filters or self.active_label_filters:
             bubble_desc = self._get_filter_description()
-            filter_desc += f" + {bubble_desc}"
-
-        # Update state and refresh - clear visual selection since we're searching
+            filter_desc += f" + {bubble_desc}"        # Update state and refresh - clear visual selection since we're searching
         self.state_manager.set_search_filter(filter_desc, final_matching_ids)
-        self._refresh_tree_view(clear_visual_selection=True)
+        self._refresh_tree_view(preserve_selections=False)
         
     def _get_bubble_filtered_ids(self):
         """Get snippet IDs that match current bubble filters"""
@@ -881,16 +876,15 @@ class SnippetList(ttk.Frame):
         current_text = self.search_var.get().strip()
         if not current_text:
             self.search_var.set("Search snippets...")
-            self.search_entry.config(foreground='gray')
-            # Clear any lingering filter
+            self.search_entry.config(foreground='gray')            # Clear any lingering filter
             self.state_manager.set_search_filter('', set())
-            self._refresh_tree_view(clear_visual_selection=True)  # Clear visual selection on focus out
+            self._refresh_tree_view(preserve_selections=False)  # Clear visual selection on focus out
 
-    def _refresh_tree_view(self, clear_visual_selection=False):
+    def _refresh_tree_view(self, preserve_selections=True):
         """Refresh tree view display
         
         Args:
-            clear_visual_selection: If True, don't restore visual selection highlighting
+            preserve_selections: If True, restore visual selection highlighting (default)
         """
         
         # Store current selections from state manager
@@ -922,7 +916,7 @@ class SnippetList(ttk.Frame):
             self.snippets[item_id] = snippet
             
             # Only restore visual selection if not clearing it
-            if not clear_visual_selection and snippet_id in selected_ids:
+            if preserve_selections and snippet_id in selected_ids:
                 self.tree.selection_add(item_id)
                 
         # Update all item displays to show correct state
