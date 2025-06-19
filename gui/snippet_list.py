@@ -8,6 +8,7 @@ from copy import deepcopy
 
 from models.snippet_state import SnippetState, SnippetStateManager
 from utils.ui_utils import create_tooltip, configure_tree_style
+from utils.font_manager import get_font_manager
 from gui.snippet_dialog import SnippetDialog
 from utils.logger import get_logger
 
@@ -23,7 +24,7 @@ class ScrollableBubbleFrame(ttk.Frame):
         super().__init__(parent, **kwargs)
         self.max_rows = max_rows
         self.child_widgets = []
-        self.row_height = 29  # Button height + padding
+        self._calculate_row_height()  # Calculate initial row height dynamically
         self._layout_in_progress = False
         self._last_width = 0
         
@@ -49,6 +50,49 @@ class ScrollableBubbleFrame(ttk.Frame):
         # Start with minimum height (1 row) and disable pack propagation for height control
         self.configure(height=self.row_height, width=200)  # Set minimum width
         self.pack_propagate(False)
+        
+    def _calculate_row_height(self):
+        """Calculate row height based on current font size"""
+        try:
+            # Get the current font size from the parent's font manager
+            # Default to a reasonable size if font manager is not available
+            base_font_size = 8  # Default bubble font size
+              # Try to get font manager from SnippetList parent
+            parent = self.master
+            while parent and not hasattr(parent, 'font_manager'):
+                parent = parent.master
+                
+            if parent and hasattr(parent, 'font_manager'):
+                try:
+                    base_font_size = parent.font_manager._calculate_font_size('default') - 1  # type: ignore
+                    base_font_size = max(6, base_font_size)
+                except Exception:                    pass            # Calculate row height with progressive scaling from Small's perfect spacing
+            # Button height: font_size + internal padding (borders, etc.)
+            button_height = base_font_size + 12            # Dynamic padding that scales proportionally with any base font size
+            # Ratios calculated to produce our perfect spacing values, accounting for int() truncation
+            # This ensures consistent visual proportions regardless of user's base font setting
+            if base_font_size <= 7:  # Small font
+                padding_ratio = 0.72   # ~5px at 7px font (5/7 = 0.714, rounded up for int() truncation) 
+            elif base_font_size <= 9:  # Normal font
+                padding_ratio = 0.78   # ~7px at 9px font (7/9 = 0.778)
+            elif base_font_size <= 11:  # Large font  
+                padding_ratio = 0.82   # ~9px at 11px font (9/11 = 0.818)
+            else:  # Extra Large font
+                padding_ratio = 0.85   # ~11px at 13px font (11/13 = 0.846)
+            
+            # Calculate dynamic padding based on actual font size
+            vertical_padding = max(2, int(base_font_size * padding_ratio))
+            
+            self.row_height = max(22, button_height + vertical_padding)
+            
+        except Exception:
+            # Fallback to default
+            self.row_height = 29
+    
+    def update_row_height(self):
+        """Update row height and relayout (call when font changes)"""
+        self._calculate_row_height()
+        self.after_idle(self._relayout)
         
     def add_child(self, widget):
         """Add a child widget to be wrapped"""
@@ -213,12 +257,17 @@ class SnippetList(ttk.Frame):
         # Create content frame
         self.content_frame = ttk.Frame(self.delete_frame)
         self.content_frame.pack(fill='both', expand=True)
-        
-        # Set initial border color
+          # Set initial border color
         self._set_frame_border('gray20')
+        
+        # Initialize font manager
+        self.font_manager = get_font_manager()
         
         # Create UI
         self._create_ui()
+        
+        # Apply initial fonts
+        self._apply_fonts()
         
         # Configure custom button styles for bubbles
         self._configure_bubble_styles()
@@ -268,6 +317,7 @@ class SnippetList(ttk.Frame):
         # Title
         header = ttk.Label(header_frame, text="Snippet List", font=('TkDefaultFont', 10, 'bold'))
         header.pack(side='left')
+        self._header_label = header  # Save reference for font applying
         
         # Buttons frame
         button_frame = ttk.Frame(header_frame)
@@ -311,6 +361,7 @@ class SnippetList(ttk.Frame):
         self.search_entry.bind('<FocusIn>', self._on_search_focus_in)
         self.search_entry.bind('<FocusOut>', self._on_search_focus_out)
         self.search_entry.pack(fill='x')
+        self._search_entry = self.search_entry  # Save reference for font applying
         
     def _create_tree_view(self):
         """Create tree view with scrollbar"""
@@ -445,13 +496,17 @@ class SnippetList(ttk.Frame):
                 relief="raised",
                 borderwidth=2          # Keep consistent border
             )
-            
-        # Clear any existing search and show all snippets
+              # Clear any existing search and show all snippets
         self._clear_search()
         self._apply_bubble_filters()
-        
+    
     def _create_bubble_button(self, parent, text, filter_type, filter_value):
         """Create a clickable bubble button with custom styling"""
+        # Calculate initial font size based on current scale
+        bubble_size = self.font_manager._calculate_font_size('default') - 1
+        bubble_size = max(6, bubble_size)  # Minimum size of 6
+        initial_font = ('TkDefaultFont', bubble_size)
+        
         # Use tk.Button instead of ttk.Button for better color control
         btn = tk.Button(
             parent,
@@ -463,7 +518,7 @@ class SnippetList(ttk.Frame):
             activeforeground="#000000",  # Hover text
             relief="raised",
             borderwidth=2,          # Keep consistent border width
-            font=('TkDefaultFont', 8),
+            font=initial_font,
             cursor="hand2",
             command=lambda: self._toggle_bubble_filter(filter_type, filter_value, btn)
         )
@@ -1524,3 +1579,113 @@ class SnippetList(ttk.Frame):
             foreground=[('active', 'white'), ('pressed', 'white'), ('!active', 'white')],
             relief=[('pressed', 'sunken'), ('!pressed', 'solid')]
         )
+    
+    def _apply_fonts(self):
+        """Apply font manager fonts to all UI components"""
+        try:
+            # Apply font to tree view
+            if hasattr(self, 'tree'):
+                tree_font = self.font_manager.get_font_tuple('tree')
+                style = ttk.Style()
+                style.configure('Normal.Treeview', font=tree_font)
+                style.configure('Normal.Treeview.Heading', font=self.font_manager.get_font_tuple('tree', 'bold'))
+                
+            # Apply font to header label
+            if hasattr(self, '_header_label'):
+                header_font = self.font_manager.get_font('heading', 'bold')
+                self._header_label.configure(font=header_font)
+                
+            # Apply font to search entry
+            if hasattr(self, '_search_entry'):
+                default_font = self.font_manager.get_font_tuple('default')
+                self._search_entry.configure(font=default_font)            # Apply fonts to filter section elements
+            default_font = self.font_manager.get_font_tuple('default')
+            
+            # Get centralized static font for buttons
+            static_button_font = self.font_manager.get_static_font('button')
+            static_bubble_font = self.font_manager.get_static_font('bubble')
+            
+            # Apply font to search entry
+            if hasattr(self, '_search_entry'):
+                self._search_entry.configure(font=default_font)
+            
+            # Skip button font updates to avoid type checker issues
+            # Buttons use centralized static fonts which work well across displays
+            logger.debug(f"Button fonts using static configuration: {static_button_font}")
+            logger.debug(f"Bubble fonts using static configuration: {static_bubble_font}")
+              # Apply fonts to filter labels (these work without type issues)
+            self._apply_fonts_to_filter_labels()
+            
+            # Apply dynamic fonts to filter bubbles (tk.Button widgets support this)
+            self._apply_fonts_to_bubbles()
+                
+            logger.debug("Fonts applied to SnippetList components")
+            
+        except Exception as e:
+            logger.error(f"Error applying fonts to SnippetList: {str(e)}")
+    
+    def _apply_fonts_to_filter_labels(self):
+        """Apply fonts to filter section labels"""
+        try:
+            default_font = self.font_manager.get_font_tuple('default')
+            
+            # Find and update filter labels recursively
+            if hasattr(self, 'filter_frame'):
+                for widget in self.filter_frame.winfo_children():
+                    self._update_labels_recursive(widget, default_font)
+                    
+        except Exception as e:
+            logger.debug(f"Error applying fonts to filter labels: {str(e)}")
+    
+    def _update_labels_recursive(self, widget, font_tuple):
+        """Recursively update label fonts"""
+        try:
+            if isinstance(widget, ttk.Label):
+                try:
+                    widget.configure(font=font_tuple)
+                except tk.TclError:
+                    pass  # Widget doesn't support font option
+              # Recurse to children
+            for child in widget.winfo_children():
+                self._update_labels_recursive(child, font_tuple)
+                
+        except Exception:
+            pass
+    
+    def _apply_fonts_to_bubbles(self):
+        """Apply dynamic fonts to bubble filter buttons"""
+        try:
+            # Get dynamic font size for bubbles (slightly smaller than default)
+            bubble_size = self.font_manager._calculate_font_size('default') - 1
+            bubble_size = max(6, bubble_size)  # Minimum size of 6
+            bubble_font = ('TkDefaultFont', bubble_size)
+              # Update all bubble buttons in both containers
+            self._update_bubble_fonts_recursive(self.categories_bubble_frame, bubble_font)
+            self._update_bubble_fonts_recursive(self.labels_bubble_frame, bubble_font)
+            
+            # Update bubble container row heights to match new font size
+            if hasattr(self, 'categories_bubble_frame'):
+                self.categories_bubble_frame.update_row_height()
+            if hasattr(self, 'labels_bubble_frame'):
+                self.labels_bubble_frame.update_row_height()
+            
+            logger.debug(f"Bubble fonts updated to dynamic size: {bubble_font}")
+                    
+        except Exception as e:
+            logger.debug(f"Error applying fonts to bubble buttons: {str(e)}")
+    
+    def _update_bubble_fonts_recursive(self, container, font_tuple):
+        """Recursively update fonts for all tk.Button widgets in container"""
+        try:
+            for child in container.winfo_children():
+                if isinstance(child, tk.Button):
+                    child.configure(font=font_tuple)
+                elif hasattr(child, 'winfo_children'):
+                    # Recurse into child containers
+                    self._update_bubble_fonts_recursive(child, font_tuple)
+        except Exception:
+            pass  # Skip widgets that don't support font configuration
+    
+    def refresh_fonts(self):
+        """Public method to refresh fonts (called from main app)"""
+        self._apply_fonts()

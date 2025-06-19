@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import ttk
 from utils.ui_utils import create_tooltip, set_app_icon
+from utils.font_manager import get_font_manager
 from utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -22,22 +23,36 @@ class PromptWindow(tk.Toplevel):
         # Configure window to stay on top but not be modal
         self.transient(parent)
         # Remove grab_set() to allow interaction with main window
-        
-        # Position window relative to parent
+          # Position window relative to parent
         self.geometry("+%d+%d" % (
             parent.winfo_rootx() + 50,
             parent.winfo_rooty() + 50
         ))
-          # Create header
+        
+        # Initialize font manager
+        self.font_manager = get_font_manager()
+        
+        # Create UI
+        self._create_ui()
+        
+        # Apply initial fonts
+        self._apply_fonts()
+        
+        # Handle window close event properly
+        self.protocol("WM_DELETE_WINDOW", self._on_window_close)
+    
+    def _create_ui(self):
+        """Create all UI elements"""
+        # Create header
         header_frame = ttk.Frame(self)
         header_frame.pack(fill='x', padx=10, pady=(10, 5))
         
-        header_label = ttk.Label(
+        self.header_label = ttk.Label(
             header_frame, 
             text="Prompt Preview", 
             font=('TkDefaultFont', 12, 'bold')
         )
-        header_label.pack(side='left')
+        self.header_label.pack(side='left')
         
         # Create copy button in header (right side)
         self.copy_btn = ttk.Button(
@@ -47,7 +62,8 @@ class PromptWindow(tk.Toplevel):
         )
         self.copy_btn.pack(side='right')
         create_tooltip(self.copy_btn, "Copy prompt text to clipboard")
-          # Create frame for text and scrollbar with proper padding
+        
+        # Create frame for text and scrollbar with proper padding
         text_frame = ttk.Frame(self)
         text_frame.pack(fill='both', expand=True, padx=10, pady=(0, 10))
         
@@ -71,7 +87,8 @@ class PromptWindow(tk.Toplevel):
             yscrollcommand=scrollbar.set
         )
         self.text_widget.pack(side='left', fill='both', expand=True)
-          # Connect scrollbar to text widget
+        
+        # Connect scrollbar to text widget
         scrollbar.configure(command=self.text_widget.yview)
         
         # Set text widget to disabled state initially
@@ -85,8 +102,29 @@ class PromptWindow(tk.Toplevel):
         
         # Set initial content
         self.update_prompt("No Snippets Selected")
-          # Handle window close event properly
-        self.protocol("WM_DELETE_WINDOW", self._on_window_close)
+    
+    def _apply_fonts(self):
+        """Apply font manager fonts to all UI components"""
+        try:            # Apply font to header label
+            if hasattr(self, 'header_label'):
+                header_font = self.font_manager.get_font('heading', 'bold')
+                self.header_label.configure(font=header_font)
+                
+            # Skip copy button font (default works fine and avoids type issues)
+                
+            # Apply font to text widget
+            if hasattr(self, 'text_widget'):
+                text_font = self.font_manager.get_font_tuple('default')
+                self.text_widget.configure(font=text_font)
+                
+            logger.debug("Fonts applied to PromptWindow components")
+            
+        except Exception as e:
+            logger.error(f"Error applying fonts to PromptWindow: {str(e)}")
+    
+    def refresh_fonts(self):
+        """Public method to refresh fonts (called from main app)"""
+        self._apply_fonts()
 
     def _on_window_close(self):
         """Handle window close event"""

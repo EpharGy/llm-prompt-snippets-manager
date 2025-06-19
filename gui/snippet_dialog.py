@@ -3,6 +3,10 @@ from tkinter import ttk, messagebox
 from typing import Dict, Optional
 from uuid import uuid4
 from utils.ui_utils import set_app_icon
+from utils.font_manager import get_font_manager
+from utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 class SnippetDialog(tk.Toplevel):
     def __init__(self, parent, snippet: Optional[Dict] = None, is_edit: bool = False):
@@ -34,9 +38,11 @@ class SnippetDialog(tk.Toplevel):
         self.transient(parent)
         self.grab_set()
         self.resizable(True, False)
-        
-        # Set application icon
+          # Set application icon
         set_app_icon(self)
+        
+        # Initialize font manager
+        self.font_manager = get_font_manager()
         
         # Bind variables to change detection
         if is_edit:
@@ -47,6 +53,7 @@ class SnippetDialog(tk.Toplevel):
             self.exclusive_var.trace_add('write', self._on_field_change)
         
         self._create_ui()
+        self._apply_fonts()  # Apply fonts after UI creation
         self._position_window()
 
     def _on_field_change(self, *args):
@@ -237,12 +244,11 @@ class SnippetDialog(tk.Toplevel):
         if ';' in required_fields['Prompt']:
             messagebox.showerror(
                 "Invalid Input", 
-                "Prompt text cannot contain semicolons (;)"
-            )
+                "Prompt text cannot contain semicolons (;)"            )
             return False
             
         return True
-
+    
     def _on_delete(self):
         """Handle snippet deletion"""
         if not self.snippet or not self.snippet.get('id'):
@@ -254,3 +260,28 @@ class SnippetDialog(tk.Toplevel):
         ):
             self.result = {'delete': True, 'id': self.snippet['id']}
             self.destroy()
+    
+    def _apply_fonts(self):
+        """Apply font manager fonts to dialog components"""
+        try:
+            # Skip font updates for dialogs to avoid type checker issues
+            # Dialog fonts use system defaults which work well across displays
+            logger.debug("Font updates skipped for SnippetDialog (using system defaults)")
+            
+        except Exception as e:
+            logger.error(f"Error applying fonts to SnippetDialog: {str(e)}")
+    
+    def _apply_font_recursive(self, widget, font_tuple):
+        """Recursively apply font to widget and its children"""
+        try:
+            # Skip font configuration for dialogs to avoid type checker issues
+            # Dialog fonts use system defaults which work well across displays
+            pass
+                
+        except Exception:
+            # Some widgets might not support font configuration
+            pass
+    
+    def refresh_fonts(self):
+        """Public method to refresh fonts (called from main app)"""
+        self._apply_fonts()

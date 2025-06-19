@@ -16,43 +16,34 @@ import json
 class FontManager:
     """Centralized font management with user-configurable scaling and dynamic DPI detection"""
     
-    # Font size presets (base sizes that get scaled)
-    BASE_SIZES = {
-        'small': {
-            'default': 8,
-            'heading': 10,
-            'button': 8,
-            'tree': 8,
-            'dialog': 8
-        },
-        'normal': {
-            'default': 9,
-            'heading': 11,
-            'button': 9,
-            'tree': 9,
-            'dialog': 9
-        },
-        'large': {
-            'default': 11,
-            'heading': 13,
-            'button': 10,
-            'tree': 10,
-            'dialog': 10
-        },
-        'extra_large': {
-            'default': 13,
-            'heading': 15,
-            'button': 12,
-            'tree': 12,
-            'dialog': 12
-        },
-        'auto': {
-            'default': 9,  # Will be calculated based on DPI
-            'heading': 11,
-            'button': 9,
-            'tree': 9,
-            'dialog': 9
-        }
+    # Base font size - user can adjust this to scale everything proportionally
+    DEFAULT_BASE_SIZE = 10
+    
+    # Scale factors for different size levels (multiplicative)
+    SCALE_FACTORS = {
+        'small': 0.8,       # 80% of base
+        'normal': 1.0,      # 100% of base
+        'large': 1.2,       # 120% of base  
+        'extra_large': 1.4, # 140% of base
+        'auto': 1.0         # Will be calculated based on DPI
+    }
+    
+    # Different element types can have their own relative scaling
+    ELEMENT_MODIFIERS = {
+        'default': 1.0,     # Base size
+        'heading': 1.2,     # 20% larger than base
+        'button': 1.0,      # Same as base
+        'tree': 0.95,       # Slightly smaller
+        'dialog': 1.0       # Same as base
+    }
+    
+    # Static font offsets relative to the base 'default' size for each scale
+    # These are used for widgets that can't use dynamic font scaling (buttons, bubbles)
+    # Positive values = larger than default, negative = smaller than default
+    STATIC_FONT_OFFSETS = {
+        'button': 0,        # Same size as default
+        'bubble': -1,       # 1 point smaller than default  
+        'small_button': -1  # 1 point smaller than default
     }
     
     def __init__(self, data_dir: str = "data"):
@@ -100,13 +91,12 @@ class FontManager:
             }
             with open(self.settings_file, 'w') as f:
                 json.dump(settings, f, indent=2)
-        except Exception:
-            # Silently ignore save errors
+        except Exception:            # Silently ignore save errors
             pass
     
     def set_font_scale(self, scale: str):
         """Set the font scale and save preference"""
-        if scale in self.BASE_SIZES:
+        if scale in self.SCALE_FACTORS:
             self.current_scale = scale
             self._fonts_cache.clear()  # Clear cache to force recreation
             # Clear DPI cache when switching to/from auto mode
@@ -172,6 +162,26 @@ class FontManager:
         scale_factor = self._get_dpi_scale_factor()
         return max(8, int(base_size * scale_factor))  # Minimum size of 8
     
+    def _calculate_font_size(self, element_type: str = 'default', base_size: Optional[int] = None) -> int:
+        """Calculate font size using multiplicative scaling"""
+        if base_size is None:
+            base_size = self.DEFAULT_BASE_SIZE
+            
+        # Get scale factor for current scale level
+        scale_factor = self.SCALE_FACTORS.get(self.current_scale, 1.0)
+        
+        # Apply auto scaling if enabled
+        if self.current_scale == 'auto':
+            scale_factor = self._get_dpi_scale_factor()
+            
+        # Get element modifier
+        element_modifier = self.ELEMENT_MODIFIERS.get(element_type, 1.0)
+        
+        # Calculate final size: base × scale × element_modifier
+        final_size = base_size * scale_factor * element_modifier
+        
+        return max(6, int(round(final_size)))  # Minimum size of 6, rounded to int
+    
     def get_font(self, font_type: str = 'default', weight: Literal['normal', 'bold'] = 'normal') -> font.Font:
         """
         Get a font object for the specified type and weight
@@ -179,28 +189,20 @@ class FontManager:
         Args:
             font_type: Type of font ('default', 'heading', 'button', 'tree', 'dialog')
             weight: Font weight ('normal', 'bold')
-        
-        Returns:
+          Returns:
             tkinter.font.Font object
         """
         cache_key = f"{font_type}_{weight}_{self.current_scale}"
         
         if cache_key not in self._fonts_cache:
-            base_size = self.BASE_SIZES[self.current_scale].get(font_type, 
-                       self.BASE_SIZES[self.current_scale]['default'])
-            
-            # Apply auto scaling if enabled
-            if self.current_scale == 'auto':
-                size = self._get_auto_font_size(base_size)
-            else:
-                size = base_size
+            size = self._calculate_font_size(font_type)
             
             self._fonts_cache[cache_key] = font.Font(
                 family='TkDefaultFont',
                 size=size,
                 weight=weight
             )
-        
+            
         return self._fonts_cache[cache_key]
     
     def get_font_tuple(self, font_type: str = 'default', weight: Literal['normal', 'bold'] = 'normal') -> Tuple[str, int, str]:
@@ -210,20 +212,32 @@ class FontManager:
         Args:
             font_type: Type of font ('default', 'heading', 'button', 'tree', 'dialog')
             weight: Font weight ('normal', 'bold')
-        
-        Returns:
+          Returns:
             Tuple of (family, size, weight)
         """
-        base_size = self.BASE_SIZES[self.current_scale].get(font_type,
-                   self.BASE_SIZES[self.current_scale]['default'])
-        
-        # Apply auto scaling if enabled
-        if self.current_scale == 'auto':
-            size = self._get_auto_font_size(base_size)
-        else:
-            size = base_size
-            
+        size = self._calculate_font_size(font_type)
         return ('TkDefaultFont', size, weight)
+    
+    def get_static_font(self, font_type: str = 'button') -> Tuple[str, int, str]:
+        """
+        Get a static font tuple that scales with the base font size.
+        
+        Used for buttons and filter bubbles to avoid type checker issues.
+        These fonts use the current scale's base 'default' size plus an offset.
+        
+        Args:
+            font_type: Type of static font ('button', 'bubble', 'small_button')
+          Returns:
+            Tuple of (family, size, weight) - calculated from base + offset
+        """
+        # Calculate base size using the new system
+        base_size = self._calculate_font_size('default')
+        
+        # Apply the offset for this font type
+        offset = self.STATIC_FONT_OFFSETS.get(font_type, 0)
+        final_size = max(6, base_size + offset)  # Minimum size of 6
+        
+        return ('Segoe UI', final_size, 'normal')
 
 # Global font manager instance
 _font_manager: Optional[FontManager] = None
@@ -242,6 +256,10 @@ def get_font(font_type: str = 'default', weight: Literal['normal', 'bold'] = 'no
 def get_font_tuple(font_type: str = 'default', weight: Literal['normal', 'bold'] = 'normal') -> Tuple[str, int, str]:
     """Convenience function to get a font tuple from the global manager"""
     return get_font_manager().get_font_tuple(font_type, weight)
+
+def get_static_font(font_type: str = 'button') -> Tuple[str, int, str]:
+    """Convenience function to get a static font tuple from the global manager"""
+    return get_font_manager().get_static_font(font_type)
 
 def setup_window_dpi_monitoring(window):
     """

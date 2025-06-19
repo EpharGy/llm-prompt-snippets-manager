@@ -10,6 +10,7 @@ from models.data_manager import DataManager
 from models.snippet_state import SnippetStateManager
 from utils.state_utils import get_category_selections
 from utils.ui_utils import create_tooltip, set_app_icon
+from utils.font_manager import get_font_manager, setup_window_dpi_monitoring
 from utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -26,11 +27,13 @@ class PromptSnippetsApp(tk.Tk):
         
         # Remove fullscreen
         # self.state('zoomed')  # Remove this line
-        
-        # Initialize managers
+          # Initialize managers
         data_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data')
         self.data_manager = DataManager(data_dir)
         self.state_manager = SnippetStateManager.create()
+        
+        # Setup font manager with DPI monitoring
+        self.font_manager = setup_window_dpi_monitoring(self)
         
         # Create main container
         main_frame = ttk.Frame(self)
@@ -48,10 +51,29 @@ class PromptSnippetsApp(tk.Tk):
             on_snippets_delete=self._on_snippets_delete
         )
         self.snippet_list.pack(fill='both', expand=True)
-        
-        # Create right button panel
+          # Create right button panel
         button_frame = ttk.Frame(main_frame)
         button_frame.pack(side='right', fill='y', padx=(0, 0))
+        
+        # Create font controls section
+        font_frame = ttk.LabelFrame(button_frame, text="Font Size", padding=5)
+        font_frame.pack(fill='x', pady=(0, 15))
+          # Font scale dropdown
+        current_scale = self.font_manager.get_font_scale()
+        current_display_name = self.font_manager.get_available_scales()[current_scale]
+        self.font_scale_var = tk.StringVar(value=current_display_name)
+        self.font_scale_combo = ttk.Combobox(
+            font_frame,
+            textvariable=self.font_scale_var,
+            values=list(self.font_manager.get_available_scales().values()),
+            state='readonly',
+            width=12
+        )
+        self.font_scale_combo.pack(pady=(0, 5))
+        self.font_scale_combo.bind('<<ComboboxSelected>>', self._on_font_scale_changed)
+        
+        # Add tooltip for font dropdown
+        create_tooltip(self.font_scale_combo, "Adjust font size for all text\nAuto: Automatic scaling based on display DPI")
         
         # Create buttons with proper spacing
         self.show_prompt_btn = ttk.Button(
@@ -251,6 +273,47 @@ class PromptSnippetsApp(tk.Tk):
         except Exception as e:
             logger.error(f"Error copying to clipboard: {str(e)}")
             messagebox.showerror("Error", f"Failed to copy to clipboard: {str(e)}")
+
+    def _on_font_scale_changed(self, event=None) -> None:
+        """Handle font scale changes"""
+        try:
+            # Get selected scale display name and convert to internal name
+            display_name = self.font_scale_var.get()
+            scale_map = {v: k for k, v in self.font_manager.get_available_scales().items()}
+            scale_key = scale_map.get(display_name)
+            
+            if scale_key and self.font_manager.set_font_scale(scale_key):
+                logger.info(f"Font scale changed to: {display_name} ({scale_key})")
+                # Force refresh of UI components that use fonts
+                self._refresh_ui_fonts()
+            else:
+                logger.warning(f"Failed to set font scale: {display_name}")
+                
+        except Exception as e:
+            logger.error(f"Error changing font scale: {str(e)}")
+            messagebox.showerror("Error", f"Failed to change font scale: {str(e)}")
+    
+    def _refresh_ui_fonts(self) -> None:
+        """Refresh fonts for all UI components"""
+        try:            # Skip button font updates - default button fonts work well across displays
+            # and avoid type checker issues with font configuration
+            
+            # Update snippet list fonts
+            if hasattr(self.snippet_list, 'refresh_fonts'):
+                self.snippet_list.refresh_fonts()
+              # Update prompt window fonts if open
+            if self.prompt_window and hasattr(self.prompt_window, 'refresh_fonts'):
+                try:
+                    if self.prompt_window.winfo_exists():
+                        self.prompt_window.refresh_fonts()
+                except tk.TclError:
+                    # Window was destroyed
+                    self.prompt_window = None
+            
+            logger.debug("UI fonts refreshed successfully")
+            
+        except Exception as e:
+            logger.error(f"Error refreshing UI fonts: {str(e)}")
 
     def run(self) -> None:
         """Start the application"""
