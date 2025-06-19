@@ -752,8 +752,7 @@ class SnippetList(ttk.Frame):
                         "You must deselect the existing snippet first."
                     )
                     return
-                    
-                # Toggle selection state
+                      # Toggle selection state
                 new_state = (SnippetState.SELECTED 
                            if current_state != SnippetState.SELECTED 
                            else SnippetState.UNSELECTED)
@@ -768,8 +767,8 @@ class SnippetList(ttk.Frame):
                 self._notify_selection_changed()
                     
         except Exception as e:
-            print(f"Error handling click: {str(e)}")
-            print(traceback.format_exc())
+            logger.error(f"❌ Failed to handle snippet selection click: {str(e)}")
+            logger.debug(f"🔧 Click handler error traceback: {traceback.format_exc()}")
 
     def _has_selection_conflict(self, snippet: Dict) -> bool:
         """Check if selecting this snippet would violate exclusivity rules"""
@@ -783,8 +782,7 @@ class SnippetList(ttk.Frame):
                 existing['id'] != snippet['id'] and
                 existing['id'] in self.state_manager.selected_ids):
                 return True
-                
-        return False
+                  return False
 
     def _on_tree_double_click(self, event):
         """Handle double click for editing"""
@@ -794,10 +792,10 @@ class SnippetList(ttk.Frame):
             
         snippet = self.snippets.get(item)
         if not snippet:
-            print(f"Warning: No snippet found for item {item}")  # Debug
+            logger.warning(f"⚠️ Double-click handler: No snippet found for tree item {item}")
             return
             
-        print(f"Double-clicked snippet: {snippet['name']} ({snippet['id']})")  # Debug
+        logger.debug(f"🔧 Double-clicked snippet: {snippet['name']} ({snippet['id']})")
         self._edit_snippet(snippet)
 
     def _edit_snippet(self, snippet: Dict):
@@ -1600,19 +1598,15 @@ class SnippetList(ttk.Frame):
                 default_font = self.font_manager.get_font_tuple('default')
                 self._search_entry.configure(font=default_font)            # Apply fonts to filter section elements
             default_font = self.font_manager.get_font_tuple('default')
-            
-            # Get centralized static font for buttons
+              # Get centralized static font for buttons (bubbles use dynamic fonts)
             static_button_font = self.font_manager.get_static_font('button')
-            static_bubble_font = self.font_manager.get_static_font('bubble')
             
             # Apply font to search entry
             if hasattr(self, '_search_entry'):
                 self._search_entry.configure(font=default_font)
-            
-            # Skip button font updates to avoid type checker issues
-            # Buttons use centralized static fonts which work well across displays
-            logger.debug(f"Button fonts using static configuration: {static_button_font}")
-            logger.debug(f"Bubble fonts using static configuration: {static_bubble_font}")
+              # Skip button font updates to avoid type checker issues
+            # Regular UI buttons use centralized static fonts which work well across displays
+            logger.debug(f"Regular UI buttons using static fonts (type-safe): {static_button_font}")
               # Apply fonts to filter labels (these work without type issues)
             self._apply_fonts_to_filter_labels()
             
@@ -1669,7 +1663,7 @@ class SnippetList(ttk.Frame):
             if hasattr(self, 'labels_bubble_frame'):
                 self.labels_bubble_frame.update_row_height()
             
-            logger.debug(f"Bubble fonts updated to dynamic size: {bubble_font}")
+            logger.debug(f"Filter bubble buttons updated to dynamic font: {bubble_font}")
                     
         except Exception as e:
             logger.debug(f"Error applying fonts to bubble buttons: {str(e)}")
