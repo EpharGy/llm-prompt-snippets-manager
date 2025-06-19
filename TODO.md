@@ -83,12 +83,22 @@
      - ✅ `PROMPT_SNIPPETS_DEBUG=true` environment variable
      - ✅ Unified debug detection across all components
      - ✅ EXE-ready: Command line flags work for future installers
-     - ✅ Added `utils/debug_utils.py` with EXE detection helpers
+     - ✅ Added `utils/debug_utils.py` with EXE detection helpers   - ✅ **COMPLETED: Exception Handling Cleanup** - Replaced all bare `except:` with specific exception types
+     - ✅ Removed unsupported `logger.exception()` calls, replaced with `logger.debug()`/`logger.error()`
+     - ✅ Fixed indentation and concatenation issues from automated edits
+     - ✅ Improved error specificity and logging consistency across codebase
+     - ✅ Application tested and verified to run without errors after changes
    - [ ] **Print Statement Cleanup** - Replace remaining print() calls with proper logging
+   - [ ] **CODE ARCHITECTURE: Large File Refactoring** - Break down oversized files for maintainability
+     - [ ] **HIGH PRIORITY**: Split `snippet_list.py` (1699 lines) into focused modules:
+       - [ ] `gui/snippet_list.py` (main component, ~400-500 lines)
+       - [ ] `gui/components/scrollable_bubble_frame.py` (bubble container, ~200-300 lines)
+       - [ ] `gui/components/filter_controls.py` (filtering logic, ~300-400 lines)
+       - [ ] `gui/components/tree_operations.py` (treeview operations, ~300-400 lines)
+       - [ ] `gui/mixins/font_mixin.py` (font management methods, ~200-300 lines)
    - [ ] **Centralized Styling** - Move hardcoded UI colors/styles to theme system
    - [ ] **Complex Filter Logic** - Break down `_apply_bubble_filters()` into smaller functions
    - [ ] **Scroll Wheel Handling** - Replace manual widget tree traversal with proper event delegation
-   - [ ] **Consistent Error Handling** - Standardize error handling patterns (bool returns vs exceptions)
 
 ### 🎯 NEXT PRIORITIES: Advanced Management Features
 1. **Category/Label Management UI**

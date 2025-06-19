@@ -23,6 +23,7 @@
 | Get app path (script or EXE) | `get_app_path()` | utils/debug_utils.py |
 | Log user-facing operations | `logger.info("✅ message")` | utils/logger.py |
 | Sanitize category/label input | `sanitize_category_label(text, is_category)` | models/data_manager.py |
+| Handle exceptions properly | See Exception Handling Patterns | REUSABLE_FUNCTIONS.md §🚨 |
 
 ---
 
@@ -421,6 +422,82 @@ if DEBUG_MODE:
 - **Multiple Methods**: Environment variables, CLI flags, launcher script
 - **Unified Detection**: All components use same debug state
 - **Source Tracking**: Logs which method activated debug mode
+
+---
+
+## 🚨 EXCEPTION HANDLING PATTERNS
+
+### **✅ GOOD: Specific Exception Types**
+**Always use specific exception types instead of bare `except:`**
+
+```python
+# ✅ GOOD - Specific exceptions with proper logging
+try:
+    with open(file_path, 'r') as f:
+        data = json.load(f)
+except FileNotFoundError as e:
+    logger.debug(f"Settings file not found, using defaults: {e}")
+    return default_settings
+except json.JSONDecodeError as e:
+    logger.error(f"Invalid JSON in settings file: {e}")
+    return default_settings
+except OSError as e:
+    logger.error(f"Failed to read settings file: {e}")
+    return default_settings
+```
+
+### **❌ BAD: Bare Except Clauses**
+```python
+# ❌ BAD - Hides all errors, makes debugging impossible
+try:
+    risky_operation()
+except:
+    pass  # This hides ALL errors including KeyboardInterrupt!
+```
+
+### **✅ GOOD: Logger Pattern (Our Custom Logger)**
+**Our custom logger doesn't support `logger.exception()` - use alternatives:**
+
+```python
+# ✅ GOOD - Use logger.debug() or logger.error() with exception details
+try:
+    operation_that_might_fail()
+except SpecificError as e:
+    logger.debug(f"Expected error during operation: {e}")
+    # Continue gracefully
+except UnexpectedError as e:
+    logger.error(f"Unexpected error in operation: {str(e)}")
+    return False
+```
+
+### **❌ BAD: Unsupported Logger Methods**
+```python
+# ❌ BAD - logger.exception() not supported in our custom logger
+try:
+    operation()
+except Exception as e:
+    logger.exception("This will fail!")  # Method doesn't exist
+```
+
+### **✅ GOOD: Tkinter-Specific Patterns**
+```python
+# ✅ GOOD - Handle Tkinter widget destruction gracefully  
+try:
+    widget.configure(font=new_font)
+except tk.TclError as e:
+    logger.debug(f"Widget doesn't support font configuration: {e}")
+    pass  # Expected for certain widget types
+except Exception as e:
+    logger.debug(f"Unexpected error updating widget font: {e}")
+    pass
+```
+
+### **Exception Handling Guidelines**
+1. **Be Specific**: Use specific exception types (FileNotFoundError, json.JSONDecodeError, etc.)
+2. **Log Appropriately**: Use `logger.debug()` for expected/minor errors, `logger.error()` for serious issues
+3. **Include Context**: Add meaningful error messages with context about what was being attempted
+4. **Don't Hide Errors**: Avoid bare `except:` - it catches system interrupts and makes debugging impossible
+5. **Fail Gracefully**: Provide fallback behavior or default values when possible
 
 ---
 

@@ -9,6 +9,9 @@ from models.snippet_state import SnippetState, SnippetStateManager
 from utils.ui_utils import create_tooltip, configure_tree_style
 from utils.font_manager import get_font_manager
 from gui.snippet_dialog import SnippetDialog
+from gui.components.scrollable_bubble_frame import ScrollableBubbleFrame
+from gui.components.filter_controls import FilterControls
+from gui.mixins.font_mixin import FontMixin
 from utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -17,210 +20,7 @@ logger = get_logger(__name__)
 from utils.logger import is_debug_mode
 DEBUG_MODE = is_debug_mode()
 
-class ScrollableBubbleFrame(ttk.Frame):
-    """Scrollable frame for bubble buttons with max 4 rows"""
-    
-    def __init__(self, parent, max_rows=4, **kwargs):
-        super().__init__(parent, **kwargs)
-        self.max_rows = max_rows
-        self.child_widgets = []
-        self._calculate_row_height()  # Calculate initial row height dynamically
-        self._layout_in_progress = False
-        self._last_width = 0
-        
-        # Create canvas and scrollbar
-        self.canvas = tk.Canvas(self, highlightthickness=0)
-        self.scrollbar = ttk.Scrollbar(self, orient="vertical", command=self.canvas.yview)
-        self.scrollable_frame = ttk.Frame(self.canvas)
-        
-        # Configure canvas
-        self.canvas.configure(yscrollcommand=self.scrollbar.set)
-        self.canvas.bind('<Configure>', self._on_canvas_configure)
-        
-        # Create window in canvas
-        self.canvas_window = self.canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
-        
-        # Pack canvas (scrollbar will be packed dynamically)
-        self.canvas.pack(side="left", fill="both", expand=True)
-        
-        # Bind mousewheel to canvas
-        self.canvas.bind("<MouseWheel>", self._on_mousewheel)
-        self.scrollable_frame.bind("<MouseWheel>", self._on_mousewheel)
-          # Start with minimum height (1 row) and disable pack propagation for height control
-        self.configure(height=self.row_height, width=200)  # Set minimum width
-        self.pack_propagate(False)
-        
-    def _calculate_row_height(self):
-        """Calculate row height based on current font size"""
-        try:
-            # Get the current font size from the parent's font manager
-            # Default to a reasonable size if font manager is not available
-            base_font_size = 8  # Default bubble font size
-            
-            # Try to get font manager from SnippetList parent
-            parent = self.master
-            while parent and not hasattr(parent, 'font_manager'):
-                parent = parent.master
-                
-            if parent and hasattr(parent, 'font_manager'):
-                try:
-                    base_font_size = parent.font_manager._calculate_font_size('default') - 1  # type: ignore
-                    base_font_size = max(6, base_font_size)
-                except AttributeError as e:
-                    logger.debug(f"Font manager access failed, using default base size: {e}")
-                    
-            # Calculate row height with progressive scaling from Small's perfect spacing
-            # Button height: font_size + internal padding (borders, etc.)
-            button_height = base_font_size + 12
-            
-            # Dynamic padding that scales proportionally with any base font size
-            # Ratios calculated to produce our perfect spacing values, accounting for int() truncation
-            # This ensures consistent visual proportions regardless of user's base font setting
-            if base_font_size <= 7:  # Small font
-                padding_ratio = 0.72   # ~5px at 7px font (5/7 = 0.714, rounded up for int() truncation) 
-            elif base_font_size <= 9:  # Normal font
-                padding_ratio = 0.78   # ~7px at 9px font (7/9 = 0.778)
-            elif base_font_size <= 11:  # Large font  
-                padding_ratio = 0.82   # ~9px at 11px font (9/11 = 0.818)
-            else:  # Extra Large font
-                padding_ratio = 0.85   # ~11px at 13px font (11/13 = 0.846)
-              # Calculate dynamic padding based on actual font size
-            vertical_padding = max(2, int(base_font_size * padding_ratio))
-            
-            self.row_height = max(22, button_height + vertical_padding)
-            
-        except Exception as e:
-            logger.debug(f"Error calculating row height, using default: {e}")
-            # Fallback to default
-            self.row_height = 29
-    
-    def update_row_height(self):
-        """Update row height and relayout (call when font changes)"""
-        self._calculate_row_height()
-        self.after_idle(self._relayout)
-        
-    def add_child(self, widget):
-        """Add a child widget to be wrapped"""
-        self.child_widgets.append(widget)
-        self.after_idle(self._relayout)
-        
-    def clear_children(self):
-        """Clear all child widgets"""
-        for widget in self.child_widgets:
-            widget.destroy()
-        self.child_widgets.clear()
-        # Reset to minimum height
-        self.configure(height=self.row_height)
-        self.scrollbar.pack_forget()
-        self._update_scroll_region()
-        
-    def _relayout(self):
-        """Relayout all children with wrapping"""
-        if self._layout_in_progress:
-            return
-            
-        self._layout_in_progress = True
-        
-        try:
-            if not self.child_widgets:
-                self.configure(height=self.row_height)
-                self.scrollbar.pack_forget()
-                self._update_scroll_region()
-                return
-                
-            # Get available width from parent instead of canvas
-            self.update_idletasks()
-            parent_width = self.winfo_width()
-            canvas_width = self.canvas.winfo_width()
-            
-            # Use the larger of the two (sometimes parent width is more accurate)
-            effective_width = max(parent_width - 40, canvas_width - 20)  # Buffer for scrollbar
-            available_width = max(200, effective_width)  # Minimum 200px width
-            
-            # If width is still too small, retry later
-            if available_width < 200:
-                self.after(50, self._relayout)
-                return
-            
-            # Calculate positions
-            current_row = 0
-            current_x = 0
-            
-            for widget in self.child_widgets:
-                widget.update_idletasks()
-                widget_width = widget.winfo_reqwidth()
-                
-                # Check if widget fits on current row
-                if current_x + widget_width > available_width and current_x > 0:
-                    current_row += 1
-                    current_x = 0
-                    
-                # Place widget
-                widget.place(x=current_x, y=current_row * self.row_height)
-                current_x += widget_width + 4  # 4px spacing
-                
-            # Calculate total rows needed
-            total_rows = current_row + 1
-            content_height = total_rows * self.row_height
-            
-            # Update scrollable frame height
-            self.scrollable_frame.configure(height=content_height)
-            
-            # Determine visible height and scrollbar visibility
-            if total_rows <= self.max_rows:
-                # Content fits within max rows - no scrollbar needed
-                visible_height = content_height
-                if self.scrollbar.winfo_viewable():
-                    self.scrollbar.pack_forget()
-            else:
-                # Content exceeds max rows - show scrollbar
-                visible_height = self.max_rows * self.row_height
-                if not self.scrollbar.winfo_viewable():
-                    self.scrollbar.pack(side="right", fill="y")
-                    
-            # Update container height and width
-            current_width = self.winfo_width()
-            
-            if current_width < available_width:
-                self.configure(height=visible_height, width=available_width)
-            else:
-                self.configure(height=visible_height)
-            
-            # Make sure canvas window is properly sized
-            self.canvas.itemconfig(self.canvas_window, width=self.canvas.winfo_width())
-            
-            self._update_scroll_region()
-            
-        finally:
-            self._layout_in_progress = False
-        
-    def _on_canvas_configure(self, event):
-        """Handle canvas resize"""
-        if self._layout_in_progress:
-            return
-            
-        # Only relayout if width actually changed significantly
-        if abs(event.width - self._last_width) > 10:
-            self._last_width = event.width
-            # Update the canvas window width
-            canvas_width = event.width
-            if self.scrollbar.winfo_viewable():
-                canvas_width -= self.scrollbar.winfo_reqwidth()
-            self.canvas.itemconfig(self.canvas_window, width=canvas_width)
-            # Schedule relayout
-            self.after_idle(self._relayout)
-        
-    def _update_scroll_region(self):
-        """Update the scroll region"""
-        self.update_idletasks()
-        self.canvas.configure(scrollregion=self.canvas.bbox("all"))
-        
-    def _on_mousewheel(self, event):
-        """Handle mouse wheel scrolling"""
-        if self.scrollbar.winfo_viewable():
-            self.canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
-
-class SnippetList(ttk.Frame):
+class SnippetList(ttk.Frame, FontMixin):
     """Widget for displaying and managing snippets in a tree view"""
     
     # Symbol constants
@@ -305,14 +105,20 @@ class SnippetList(ttk.Frame):
             'exclusive': True,
             'description': 'A more complex test snippet with multiple lines and exclusive flag'        }
         self._add_new_snippet(test_snippet)
-        
+    
     def _create_ui(self):
         """Create all UI elements"""
         self._create_header_frame()
         self._create_tree_view()
         self._create_search_frame()
-        self._create_filter_section()
+        self._create_filter_controls()
         self._create_tooltips()
+        
+    def _create_filter_controls(self):
+        """Create filter controls component"""
+        self.filter_controls = FilterControls(self.content_frame, on_filter_changed=self._on_filter_changed)
+        self.filter_controls.set_font_manager(self.font_manager)
+        self.filter_controls.pack(fill='x')
         
     def _create_header_frame(self):
         """Create header with title and buttons"""
@@ -398,11 +204,10 @@ class SnippetList(ttk.Frame):
         
         self.tree.configure(yscrollcommand=scrollbar.set)
         self.tree.pack(side='left', fill='both', expand=True)
-        
-        # Bind events - using <Button-1> instead of <ButtonRelease-1> for more immediate response
+          # Bind events - using <Button-1> instead of <ButtonRelease-1> for more immediate response
         self.tree.bind('<Button-1>', self._on_tree_click)
         self.tree.bind('<Double-1>', self._on_tree_double_click)
-        
+    
     def _create_tooltips(self):
         """Create tooltips for UI elements"""
         if DEBUG_MODE:
@@ -412,8 +217,7 @@ class SnippetList(ttk.Frame):
         create_tooltip(self.delete_btn, "Delete selected snippet (double-click to edit/delete)")
         create_tooltip(self.clear_btn, "Clear all selections")
         create_tooltip(self.search_entry, "Search by name, category, labels, or prompt text")
-        create_tooltip(self.filter_mode_btn, "Toggle between AND (all selected) and OR (any selected) filter mode")
-        create_tooltip(self.clear_filters_btn, "Clear all active filters")
+        # FilterControls handles its own tooltips
 
     def _create_filter_section(self):
         """Create the filter bubbles section"""
@@ -1113,9 +917,8 @@ class SnippetList(ttk.Frame):
                     snippet['exclusive']
                 )
                 self._update_snippet_display(item_id)
-                
-        # Refresh bubble filters with new snippets
-        self._refresh_bubble_filters()
+                  # Refresh bubble filters with new snippets
+        self.filter_controls.refresh_bubble_filters(self.all_snippets)
 
     def _show_snippet_dialog(self, snippet: Optional[Dict] = None):
         """Show dialog for creating/editing snippet"""
@@ -1154,10 +957,9 @@ class SnippetList(ttk.Frame):
             # Always use the smart refresh logic that preserves state properly
             logger.debug("Refreshing view with smart state preservation")
             self._refresh_tree_view()
-            
-            # Always refresh bubble filters to include any new categories/labels
+              # Always refresh bubble filters to include any new categories/labels
             logger.debug("Updating filter options with new categories/labels")
-            self._refresh_bubble_filters()
+            self.filter_controls.refresh_bubble_filters(self.all_snippets)
             
             logger.info(f"✅ Successfully added snippet: '{snippet['name']}'")
             return True
@@ -1191,10 +993,9 @@ class SnippetList(ttk.Frame):
             logger.debug("Refreshing display and selection state")
             self._refresh_tree_view()
             self._notify_selection_changed()  # Ensure preview updates
-            
-            # Refresh bubble filters in case categories/labels changed
+              # Refresh bubble filters in case categories/labels changed
             logger.debug("Updating filter options after changes")
-            self._refresh_bubble_filters()
+            self.filter_controls.refresh_bubble_filters(self.all_snippets)
             
             logger.info(f"✅ Successfully updated snippet: '{snippet['name']}'")
             return True
@@ -1250,9 +1051,8 @@ class SnippetList(ttk.Frame):
             self._refresh_tree_view()
             self._notify_selection_changed()
             
-            # Refresh bubble filters in case categories/labels are no longer used
-            logger.debug("Updating filter options after deletion")
-            self._refresh_bubble_filters()
+            # Refresh bubble filters in case categories/labels are no longer used            logger.debug("Updating filter options after deletion")
+            self.filter_controls.refresh_bubble_filters(self.all_snippets)
             
             if len(snippet_names) == 1:
                 logger.info(f"✅ Successfully deleted snippet: '{snippet_names[0]}'")
@@ -1697,3 +1497,47 @@ class SnippetList(ttk.Frame):
     def refresh_fonts(self):
         """Public method to refresh fonts (called from main app)"""
         self._apply_fonts()
+
+    def _on_filter_changed(self):
+        """Handle filter changes from FilterControls component"""
+        self._apply_filters()
+    
+    def _apply_filters(self):
+        """Apply current filters to snippet list"""
+        # Check if we have active text search
+        search_text = self.search_var.get().strip().lower()
+        has_text_search = search_text and search_text != "search snippets..."
+        
+        # If no bubble filters are active
+        if not self.filter_controls.has_active_filters():
+            if has_text_search:
+                # Let text search handle filtering
+                self._on_search_changed()
+            else:
+                # Show all snippets
+                self.state_manager.clear_search_filter()
+                self._refresh_tree_view(preserve_selections=False)
+            return
+            
+        # Get bubble filtered IDs
+        bubble_matching_ids = self.filter_controls.get_filtered_ids(self.all_snippets)
+        
+        # If we have text search, combine the filters
+        if has_text_search:
+            text_matching_ids = set()
+            for snippet in self.all_snippets.values():
+                if (search_text in snippet['name'].lower() or
+                    search_text in snippet['category'].lower() or
+                    search_text in snippet.get('prompt_text', '').lower() or
+                    any(search_text in label.lower() for label in snippet['labels'])):
+                    text_matching_ids.add(snippet['id'])
+            
+            final_matching_ids = bubble_matching_ids.intersection(text_matching_ids)
+            filter_desc = f"Text: '{search_text}' + {self.filter_controls.get_filter_description()}"
+        else:
+            final_matching_ids = bubble_matching_ids
+            filter_desc = self.filter_controls.get_filter_description()
+        
+        # Apply filter
+        self.state_manager.set_search_filter(filter_desc, final_matching_ids)
+        self._refresh_tree_view(preserve_selections=False)
