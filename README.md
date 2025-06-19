@@ -57,7 +57,11 @@ Prompt Snippets/
 │   ├── snippet_list.py        # Advanced snippet list with filtering and state management
 │   ├── snippet_dialog.py      # Modal dialog for creating/editing snippets
 │   ├── prompt_window.py       # Separate prompt preview window
-│   └── preview_pane.py        # Embedded preview pane component
+│   ├── preview_pane.py        # Embedded preview pane component
+│   └── components/            # Reusable UI components
+│       ├── __init__.py
+│       ├── scrollable_bubble_frame.py  # Scrollable container for filter bubbles
+│       └── filter_controls.py          # Integrated filter controls component
 ├── models/                    # Data models and business logic
 │   ├── __init__.py
 │   ├── snippet.py             # Snippet data model with validation
@@ -68,10 +72,12 @@ Prompt Snippets/
 │   ├── __init__.py
 │   ├── logger.py              # Professional logging system
 │   ├── ui_utils.py            # UI helper functions (tooltips, styling)
-│   └── state_utils.py         # State utility functions
+│   ├── state_utils.py         # State utility functions
+│   └── font_manager.py        # Dynamic font scaling system for accessibility
 ├── data/                      # Data storage and configuration
 │   ├── snippets.json          # Snippet data with UUID references (created on first launch)
-│   ├── metadata.json          # Categories and labels with usage tracking  (created on first launch)
+│   ├── metadata.json          # Categories and labels with usage tracking (created on first launch)
+│   ├── ui_settings.json       # UI settings including font scale (created on first launch)
 │   └── sample_snippets.json   # Sample data for new installations
 ├── docs/                      # Documentation and screenshots
 │   └── images/                # Screenshots for README
@@ -83,7 +89,11 @@ Prompt Snippets/
 ├── assets/                    # Application assets
 │   └── icons/                 # Application icons
 │       └── app_icon.ico       # Main application icon
+├── .github/                   # Project documentation
+│   └── instructions/          # Development guidelines
+│       └── .persona.instructions.md  # AI assistant persona
 ├── REUSABLE_FUNCTIONS.md      # Developer documentation for reusable components
+├── TODO.md                    # Development roadmap and task tracking
 ├── requirements.txt           # Python dependencies (standard library only)
 └── README.md                  # This documentation
 ```

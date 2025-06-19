@@ -33,8 +33,12 @@
 
 1. **Bug Fixes & Edge Cases**
    - [x] **HIGH PRIORITY**: Fix selection highlighting bug - all snippets appear highlighted after clearing filters
+   - [x] **CRITICAL**: Fix phantom selection highlighting after snippet operations (update, add, delete)
+   - [x] **UI Enhancement**: Fix mouse wheel scrolling over filter bubble buttons
+   - [x] **Font System**: Fix dynamic font scaling for filter bubble buttons
    - [x] **UI Layout**: Move search box below snippet list for logical grouping of filter controls
    - [x] **Icon Consistency**: Apply custom app icon to all windows (main, prompt preview, add/edit dialog)
+   - [x] **State Management**: Fix preview updates when editing selected snippets
    - [ ] Fix any user-reported issues from initial release
    - [ ] Handle edge cases in data validation
    - [ ] Improve error messaging and user feedback

@@ -8,45 +8,50 @@
 
 | **I need to...** | **Use This Function** | **Location** |
 |------------------|----------------------|--------------|
-| Refresh display after data changes | `_refresh_tree_view()` | gui/snippet_list.py |
-| Update filter bubbles after metadata changes | `_refresh_bubble_filters()` | gui/snippet_list.py |
+| Refresh display after data changes | `_refresh_tree_view(preserve_selections=False)` | gui/snippet_list.py |
+| Update filter bubbles after metadata changes | `filter_controls.refresh_bubble_filters()` | gui/components/filter_controls.py |
 | Add/update/delete snippets | `DataManager` methods | models/data_manager.py |
 | Manage selection state | `SnippetStateManager` | models/snippet_state.py |
 | Create/edit snippet dialog | `SnippetDialog` | gui/snippet_dialog.py |
-| Create scrollable button container | `ScrollableBubbleFrame` | gui/snippet_list.py |
+| Create scrollable button container | `ScrollableBubbleFrame` | gui/components/scrollable_bubble_frame.py |
+| Create filter controls component | `FilterControls` | gui/components/filter_controls.py |
 | Add tooltips to widgets | `create_tooltip(widget, text)` | utils/ui_utils.py |
 | Style treeview consistently | `configure_tree_style()` | utils/ui_utils.py |
 | Filter snippets by text search | `filter_snippets_by_search()` | utils/state_utils.py |
-| Create styled filter buttons | `_create_bubble_button()` | gui/snippet_list.py |
+| Create styled filter buttons with mouse wheel | `FilterControls.create_bubble_button()` | gui/components/filter_controls.py |
 | Add debug-only development tools | `get_debug_mode()` | utils/debug_utils.py |
 | Detect if running as EXE | `is_exe_build()` | utils/debug_utils.py |
 | Get app path (script or EXE) | `get_app_path()` | utils/debug_utils.py |
 | Log user-facing operations | `logger.info("✅ message")` | utils/logger.py |
 | Sanitize category/label input | `sanitize_category_label(text, is_category)` | models/data_manager.py |
+| Manage dynamic font scaling | `FontManager` | utils/font_manager.py |
 | Handle exceptions properly | See Exception Handling Patterns | REUSABLE_FUNCTIONS.md §🚨 |
 
 ---
 
 ## 🎯 CRITICAL FUNCTIONS (Use These!)
 
-### `_refresh_tree_view(clear_visual_selection=False)`
+### `_refresh_tree_view(preserve_selections=True)`
 **Location**: `gui/snippet_list.py`  
 **Purpose**: THE master refresh function - handles ALL display updates  
 **Parameters**:
-- `clear_visual_selection=False` - Set True to clear visual highlighting  
+- `preserve_selections=True` - Set False to avoid phantom highlighting during data operations
 
 **✅ USE WHEN**:
-- Any snippet data changes (add/update/delete)
-- Need to preserve user selections and filters
+- Any snippet data changes (add/update/delete) - use `preserve_selections=False`
+- Need to preserve user selections and filters - use default `True`
 - Want consistent refresh behavior
 
-**❌ DON'T USE `_clear_search()` INSTEAD** - that only clears text search!
+**⚠️ CRITICAL**: Use `preserve_selections=False` for data modification operations to prevent phantom highlighting
 
 **Example**:
 ```python
-# After any data modification:
+# After snippet update/add/delete:
 self.all_snippets[snippet['id']] = snippet.copy()
-self._refresh_tree_view()  # Preserves everything smartly
+self._refresh_tree_view(preserve_selections=False)  # Prevents phantom highlighting
+
+# For filter changes or general refresh:
+self._refresh_tree_view()  # Preserves selections
 ```
 
 ### `_refresh_bubble_filters()`
