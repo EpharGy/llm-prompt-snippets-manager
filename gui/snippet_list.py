@@ -689,14 +689,14 @@ class SnippetList(ttk.Frame, FontMixin):
             if self.on_snippet_edit:
                 if not self.on_snippet_edit(snippet):
                     raise Exception("Failed to save to storage")
-                
-            # Store in our collections
+                  # Store in our collections
             self.all_snippets[snippet['id']] = snippet.copy()
 
-            # Always use the smart refresh logic that preserves state properly
-            logger.debug("Refreshing view with smart state preservation")
-            self._refresh_tree_view()
-              # Always refresh bubble filters to include any new categories/labels
+            # Refresh view without preserving visual selections to avoid phantom highlighting
+            logger.debug("Refreshing view after adding new snippet")
+            self._refresh_tree_view(preserve_selections=False)
+            
+            # Always refresh bubble filters to include any new categories/labels
             logger.debug("Updating filter options with new categories/labels")
             self.filter_controls.refresh_bubble_filters(self.all_snippets)
             
@@ -726,13 +726,17 @@ class SnippetList(ttk.Frame, FontMixin):
             # Update any tree items showing this snippet
             for item_id, tree_snippet in self.snippets.items():
                 if tree_snippet['id'] == snippet['id']:
-                    self.snippets[item_id] = snippet.copy()
-                    
-            # Refresh view and notify about selection changes
-            logger.debug("Refreshing display and selection state")
-            self._refresh_tree_view()
-            self._notify_selection_changed()  # Ensure preview updates
-              # Refresh bubble filters in case categories/labels changed
+                    self.snippets[item_id] = snippet.copy()                    
+            # Refresh view after update - don't preserve visual selections to avoid phantom highlighting
+            logger.debug("Refreshing display after update")
+            self._refresh_tree_view(preserve_selections=False)
+            
+            # If the updated snippet is currently selected, notify to update preview
+            if snippet['id'] in self.state_manager.selected_ids:
+                logger.debug("Updated snippet is selected - refreshing preview")
+                self._notify_selection_changed()
+            
+            # Refresh bubble filters in case categories/labels changed
             logger.debug("Updating filter options after changes")
             self.filter_controls.refresh_bubble_filters(self.all_snippets)
             
@@ -783,14 +787,13 @@ class SnippetList(ttk.Frame, FontMixin):
                         if snippet['id'] == snippet_id:
                             items_to_remove.append(item_id)
                     for item_id in items_to_remove:
-                        self.snippets.pop(item_id, None)
-            
-            # Refresh display and notify any selection changes
+                        self.snippets.pop(item_id, None)            
+            # Refresh display without preserving visual selections to avoid phantom highlighting
             logger.debug("Refreshing display after deletion")
-            self._refresh_tree_view()
+            self._refresh_tree_view(preserve_selections=False)
             self._notify_selection_changed()
             
-            # Refresh bubble filters in case categories/labels are no longer used            logger.debug("Updating filter options after deletion")
+            # Refresh bubble filters in case categories/labels are no longer usedlogger.debug("Updating filter options after deletion")
             self.filter_controls.refresh_bubble_filters(self.all_snippets)
             
             if len(snippet_names) == 1:
