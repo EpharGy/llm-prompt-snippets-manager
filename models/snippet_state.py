@@ -2,6 +2,9 @@ from enum import Enum
 from dataclasses import dataclass
 from typing import Dict, Set, Optional, List
 from models.snippet import Snippet
+from utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 class SnippetState(Enum):
     UNSELECTED = "unselected"
@@ -43,8 +46,7 @@ class SnippetStateManager:
         
         old_state = self.get_state(snippet_id)
         self.state_map[snippet_id] = state
-        
-        # Handle selection state
+          # Handle selection state
         if state == SnippetState.SELECTED:
             self.selected_ids.add(snippet_id)
             if exclusive and category:
@@ -53,7 +55,7 @@ class SnippetStateManager:
             self.selected_ids.discard(snippet_id)
             if category and self.category_selections.get(category) == snippet_id:
                 self.category_selections.pop(category)
-            
+
     def can_select_snippet(self, snippet_id: str, category: str, exclusive: bool) -> bool:
         if exclusive:
             current_selection = self.category_selections.get(category)
@@ -72,7 +74,7 @@ class SnippetStateManager:
         self.search_text = search_text
         self.filtered_ids = filtered_ids
         self.is_filtered = bool(search_text)  # Only filtered if there's search text
-        print(f"Filter state - text: '{search_text}', filtered: {len(filtered_ids)} items")  # Debug
+        logger.debug(f"🔍 Filter state - text: '{search_text}', filtered: {len(filtered_ids)} items")
         
     def clear_search_filter(self) -> None:
         """Clear search filter state without affecting selections"""

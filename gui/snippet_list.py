@@ -46,8 +46,7 @@ class ScrollableBubbleFrame(ttk.Frame):
         # Bind mousewheel to canvas
         self.canvas.bind("<MouseWheel>", self._on_mousewheel)
         self.scrollable_frame.bind("<MouseWheel>", self._on_mousewheel)
-        
-        # Start with minimum height (1 row) and disable pack propagation for height control
+          # Start with minimum height (1 row) and disable pack propagation for height control
         self.configure(height=self.row_height, width=200)  # Set minimum width
         self.pack_propagate(False)
         
@@ -57,7 +56,8 @@ class ScrollableBubbleFrame(ttk.Frame):
             # Get the current font size from the parent's font manager
             # Default to a reasonable size if font manager is not available
             base_font_size = 8  # Default bubble font size
-              # Try to get font manager from SnippetList parent
+            
+            # Try to get font manager from SnippetList parent
             parent = self.master
             while parent and not hasattr(parent, 'font_manager'):
                 parent = parent.master
@@ -66,9 +66,14 @@ class ScrollableBubbleFrame(ttk.Frame):
                 try:
                     base_font_size = parent.font_manager._calculate_font_size('default') - 1  # type: ignore
                     base_font_size = max(6, base_font_size)
-                except Exception:                    pass            # Calculate row height with progressive scaling from Small's perfect spacing
+                except AttributeError as e:
+                    logger.debug(f"Font manager access failed, using default base size: {e}")
+                    
+            # Calculate row height with progressive scaling from Small's perfect spacing
             # Button height: font_size + internal padding (borders, etc.)
-            button_height = base_font_size + 12            # Dynamic padding that scales proportionally with any base font size
+            button_height = base_font_size + 12
+            
+            # Dynamic padding that scales proportionally with any base font size
             # Ratios calculated to produce our perfect spacing values, accounting for int() truncation
             # This ensures consistent visual proportions regardless of user's base font setting
             if base_font_size <= 7:  # Small font
@@ -79,13 +84,13 @@ class ScrollableBubbleFrame(ttk.Frame):
                 padding_ratio = 0.82   # ~9px at 11px font (9/11 = 0.818)
             else:  # Extra Large font
                 padding_ratio = 0.85   # ~11px at 13px font (11/13 = 0.846)
-            
-            # Calculate dynamic padding based on actual font size
+              # Calculate dynamic padding based on actual font size
             vertical_padding = max(2, int(base_font_size * padding_ratio))
             
             self.row_height = max(22, button_height + vertical_padding)
             
-        except Exception:
+        except Exception as e:
+            logger.debug(f"Error calculating row height, using default: {e}")
             # Fallback to default
             self.row_height = 29
     
@@ -527,24 +532,24 @@ class SnippetList(ttk.Frame):
         def on_scroll(event):
             # Find the scrollable container by traversing up the parent hierarchy
             widget = btn
-            while widget:
-                # Check if it's a scrollable widget
+            while widget:                # Check if it's a scrollable widget
                 if hasattr(widget, 'yview_scroll'):
                     try:
                         yview_scroll = getattr(widget, 'yview_scroll', None)
                         if yview_scroll:
                             yview_scroll(int(-1 * (event.delta / 120)), "units")
                             break
-                    except:
-                        pass
-                # Check if it's our WrappingFrame with scrollable_canvas
+                    except (AttributeError, tk.TclError) as e:
+                        logger.debug(f"Scroll handling failed for widget: {e}")
+                        pass                # Check if it's our WrappingFrame with scrollable_canvas
                 elif hasattr(widget, 'scrollable_canvas'):
                     try:
                         scrollable_canvas = getattr(widget, 'scrollable_canvas', None)
                         if scrollable_canvas and hasattr(scrollable_canvas, 'yview_scroll'):
                             scrollable_canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
                             break
-                    except:
+                    except (AttributeError, tk.TclError) as e:
+                        logger.debug(f"Scrollable canvas handling failed: {e}")
                         pass
                 widget = widget.master
             return "break"
@@ -1639,13 +1644,16 @@ class SnippetList(ttk.Frame):
             if isinstance(widget, ttk.Label):
                 try:
                     widget.configure(font=font_tuple)
-                except tk.TclError:
-                    pass  # Widget doesn't support font option
-              # Recurse to children
+                except tk.TclError:                    pass  # Widget doesn't support font option
+            # Recurse to children
             for child in widget.winfo_children():
                 self._update_labels_recursive(child, font_tuple)
                 
-        except Exception:
+        except tk.TclError as e:
+            logger.debug(f"TclError updating labels: {e}")
+            pass
+        except Exception as e:
+            logger.debug(f"Unexpected error updating labels: {e}")
             pass
     
     def _apply_fonts_to_bubbles(self):
@@ -1679,8 +1687,12 @@ class SnippetList(ttk.Frame):
                 elif hasattr(child, 'winfo_children'):
                     # Recurse into child containers
                     self._update_bubble_fonts_recursive(child, font_tuple)
-        except Exception:
+        except tk.TclError as e:
+            logger.debug(f"TclError updating bubble fonts: {e}")
             pass  # Skip widgets that don't support font configuration
+        except Exception as e:
+            logger.debug(f"Unexpected error updating bubble fonts: {e}")
+            pass
     
     def refresh_fonts(self):
         """Public method to refresh fonts (called from main app)"""

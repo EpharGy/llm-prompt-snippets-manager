@@ -12,6 +12,9 @@ from tkinter import font
 from typing import Dict, Tuple, Optional, Literal
 import os
 import json
+from utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 class FontManager:
     """Centralized font management with user-configurable scaling and dynamic DPI detection"""
@@ -78,8 +81,11 @@ class FontManager:
                 with open(self.settings_file, 'r') as f:
                     settings = json.load(f)
                     self.current_scale = settings.get('font_scale', 'normal')
-        except Exception:
-            # Use default if loading fails
+        except (FileNotFoundError, json.JSONDecodeError, KeyError) as e:
+            logger.debug(f"Failed to load font settings, using defaults: {e}")
+            self.current_scale = 'normal'
+        except Exception as e:
+            logger.error(f"Unexpected error loading font settings: {e}")
             self.current_scale = 'normal'
     
     def _save_settings(self):
@@ -91,8 +97,10 @@ class FontManager:
             }
             with open(self.settings_file, 'w') as f:
                 json.dump(settings, f, indent=2)
-        except Exception:            # Silently ignore save errors
-            pass
+        except OSError as e:
+            logger.debug(f"Failed to save font settings: {e}")
+        except Exception as e:
+            logger.debug(f"Unexpected error saving font settings: {e}")
     
     def set_font_scale(self, scale: str):
         """Set the font scale and save preference"""
@@ -147,12 +155,12 @@ class FontManager:
             
             # Standard DPI is 96, calculate scale factor
             scale_factor = dpi / 96.0
-            
-            # Clamp to reasonable values and cache result
+              # Clamp to reasonable values and cache result
             self._cached_dpi_scale = max(0.8, min(2.0, scale_factor))
             return self._cached_dpi_scale
             
-        except Exception:
+        except Exception as e:
+            logger.debug(f"DPI detection failed, using fallback: {e}")
             # Fallback to normal scale if DPI detection fails
             self._cached_dpi_scale = 1.0
             return 1.0
