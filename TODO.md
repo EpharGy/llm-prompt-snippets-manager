@@ -46,14 +46,19 @@
      - ✅ Persistent settings saved to `data/ui_settings.json`
      - ✅ DPI detection for auto-scaling on high-DPI displays
      - ✅ Enhanced with multi-monitor DPI detection and dynamic updates
-     - ✅ **COMPLETED**: Integrated font scale dropdown into main app UI
-     - ✅ **COMPLETED**: Applied font manager to ALL UI components
+     - ✅ **COMPLETED**: Integrated font scale dropdown into main app UI     - ✅ **COMPLETED**: Applied font manager to ALL UI components
        - ✅ SnippetList: Tree view, headers, search box, filter labels, all buttons, bubble filters
        - ✅ PromptWindow: Header, copy button, and text content font scaling  
        - ✅ SnippetDialog: All form elements font scaling
        - ✅ Main App: Font dropdown, show prompt button, copy button
        - ✅ Dynamic font refresh when user changes scale setting
        - ✅ Robust error handling for widgets that don't support fonts
+     - ✅ **COMPLETED**: Perfect dynamic bubble spacing system
+       - ✅ Implemented progressive, ratio-based row height calculation
+       - ✅ Small: 5px padding (perfect baseline), Normal: 7px, Large: 9px, Extra Large: 11px
+       - ✅ Fully dynamic scaling works with any user base font size setting
+       - ✅ Maintains consistent visual proportions across all font scales
+       - ✅ Professional, polished appearance with optimal breathing room
    - [ ] Final cleanup of any remaining print statements
    - [ ] Optimize performance for larger snippet collections
    - [ ] Ensure consistent styling and UX patterns

@@ -149,11 +149,18 @@ success = data_manager.delete_snippets([id1, id2, id3])
 
 ### `ScrollableBubbleFrame(parent, max_rows=4)`
 **Location**: `gui/snippet_list.py`  
-**Purpose**: Auto-wrapping scrollable container for buttons  
+**Purpose**: Auto-wrapping scrollable container for buttons with dynamic row height scaling  
+
+**✨ NEW: Perfect Dynamic Spacing System**:
+- Automatically calculates row height based on font size
+- Progressive padding: Small (5px), Normal (7px), Large (9px), Extra Large (11px)
+- Scales proportionally with any user base font size setting
+- Call `update_row_height()` when font changes
 
 ```python
 bubble_frame = ScrollableBubbleFrame(parent, max_rows=4)
 bubble_frame.add_child(button_widget)
+bubble_frame.update_row_height()  # Call after font changes
 bubble_frame.clear_children()  # Remove all buttons
 ```
 
