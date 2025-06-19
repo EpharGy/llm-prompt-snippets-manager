@@ -738,8 +738,7 @@ class SnippetList(ttk.Frame):
             snippet = self.snippets.get(item)
             if not snippet:
                 return
-                
-            # Handle state changes only when clicking symbol column
+                  # Handle state changes only when clicking symbol column
             if region == "cell" and column == '#1':
                 # Check for exclusivity conflicts
                 current_state = self.state_manager.get_state(snippet['id'])
@@ -752,7 +751,8 @@ class SnippetList(ttk.Frame):
                         "You must deselect the existing snippet first."
                     )
                     return
-                      # Toggle selection state
+                
+                # Toggle selection state
                 new_state = (SnippetState.SELECTED 
                            if current_state != SnippetState.SELECTED 
                            else SnippetState.UNSELECTED)
@@ -782,7 +782,9 @@ class SnippetList(ttk.Frame):
                 existing['id'] != snippet['id'] and
                 existing['id'] in self.state_manager.selected_ids):
                 return True
-                  return False
+        
+        # No conflicts found
+        return False
 
     def _on_tree_double_click(self, event):
         """Handle double click for editing"""
@@ -801,7 +803,7 @@ class SnippetList(ttk.Frame):
     def _edit_snippet(self, snippet: Dict):
         """Show edit dialog for snippet"""
         try:
-            print(f"Editing snippet: {snippet['name']} ({snippet['id']})")  # Debug
+            logger.debug(f"🔧 Editing snippet: {snippet['name']} ({snippet['id']})")
             
             # Make sure we're using the latest version from all_snippets
             snippet_id = snippet['id']
@@ -1113,7 +1115,7 @@ class SnippetList(ttk.Frame):
     def _show_snippet_dialog(self, snippet: Optional[Dict] = None):
         """Show dialog for creating/editing snippet"""
         try:
-            print("Opening snippet dialog")  # Debug
+            logger.debug("🔧 Opening snippet dialog")
             dialog = SnippetDialog(self, snippet)
             self.wait_window(dialog)
             

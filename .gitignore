@@ -165,3 +165,9 @@ create_icon.py
 # Debug and testing scripts (prevent Maki's mess from getting committed)
 fix_*.py
 test_*.py
+
+# Workspace-specific instructions and persona files
+.github/
+
+# VS Code workspace settings
+.vscode/
