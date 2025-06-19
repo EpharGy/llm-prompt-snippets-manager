@@ -18,7 +18,10 @@ def set_app_icon(window):
 def create_tooltip(widget, text):
     """Create a tooltip for a given widget"""
     
-    def show_tooltip(event=None):
+    def show_tooltip(event):
+        if event is None:
+            return
+            
         tooltip = tk.Toplevel()
         tooltip.wm_overrideredirect(True)
         tooltip.wm_geometry(f"+{event.x_root+10}+{event.y_root+10}")

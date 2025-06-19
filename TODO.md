@@ -41,12 +41,16 @@
    - [ ] Validate all UI interactions work correctly
 
 2. **Code Polish & Cleanup**
-   - [ ] **HIGH PRIORITY**: Add font size scaling/settings for 4K displays and accessibility
+   - [x] **HIGH PRIORITY**: Add font size scaling/settings for 4K displays and accessibility
+     - ✅ Created `utils/font_manager.py` with centralized font management
+     - ✅ Font scale options: Small, Normal, Large, Extra Large, Auto (DPI-aware)
+     - ✅ Persistent settings saved to `data/ui_settings.json`
+     - ✅ DPI detection for auto-scaling on high-DPI displays
+     - 🔄 **IN PROGRESS**: Integrate font manager into main app UI
    - [ ] Final cleanup of any remaining print statements
    - [ ] Optimize performance for larger snippet collections
    - [ ] Ensure consistent styling and UX patterns
    - [ ] Complete any remaining documentation gaps
-   - [ ] **Font size control** - Add user setting for adjustable font sizes (tree view, prompt preview, dialogs)
 
 3. **Testing & Validation**
    - [ ] Test with various data sizes and edge cases

@@ -188,6 +188,93 @@ btn = self._create_bubble_button(parent, "Label Text", "category", "value")
 
 ---
 
+## 🎨 UI UTILITIES
+
+### `FontManager` - Centralized Font Scaling System
+**Location**: `utils/font_manager.py`  
+**Purpose**: Provides consistent, scalable font management with dynamic DPI detection
+
+**Font Scale Options**:
+- `small` - Compact fonts for small displays
+- `normal` - Standard font sizes (default)
+- `large` - Larger fonts for readability
+- `extra_large` - Extra large fonts for accessibility
+- `auto` - **DPI-aware automatic scaling with multi-monitor support**
+
+**Auto Scaling Features**:
+- **Launch Detection**: Detects DPI on app startup when "Auto" is selected
+- **Dynamic Updates**: Monitors window movement between monitors with different DPIs
+- **Caching**: Caches DPI scale factor until window moves or setting changes
+- **Multi-Monitor**: Uses main window reference for accurate DPI detection
+
+**Usage**:
+```python
+from utils.font_manager import get_font_manager, setup_window_dpi_monitoring
+
+# Setup DPI monitoring for main window (do this once on startup)
+font_mgr = setup_window_dpi_monitoring(main_window)
+
+# Set font scale (persists to settings)
+font_mgr.set_font_scale('auto')  # Enable auto-scaling
+
+# Get fonts for UI elements
+tree_font = font_mgr.get_font('tree', 'normal')
+heading_font = font_mgr.get_font('heading', 'bold')
+font_tuple = font_mgr.get_font_tuple('button')
+
+# Force refresh when needed (usually automatic)
+from utils.font_manager import refresh_auto_fonts
+refresh_auto_fonts()  # Call if you detect monitor changes manually
+```
+
+**Auto Scaling Triggers**:
+1. **App Launch** - Detects initial DPI when FontManager is created
+2. **Scale Selection** - When user selects "Auto" from dropdown
+3. **Window Movement** - Automatically detects when window moves between monitors
+4. **Manual Refresh** - Can be triggered programmatically
+
+**Font Types**:
+- `default` - General UI text
+- `heading` - Section headings, titles
+- `button` - Button text
+- `tree` - Tree view items
+- `dialog` - Dialog content
+
+**✅ USE WHEN**:
+- Setting fonts for any UI element
+- Need consistent scaling across components
+- Supporting high-DPI displays (4K, etc.)
+- Handling multi-monitor setups with different scaling
+- Adding accessibility features
+
+**Features**:
+- Persistent settings in `data/ui_settings.json`
+- Real-time DPI detection for multi-monitor setups
+- Font caching for performance
+- Easy integration with existing widgets
+- Automatic refresh when moving between monitors
+
+### `set_app_icon(window)`
+**Location**: `gui/snippet_list.py`  
+**Purpose**: Set the application icon for the main window  
+
+**Parameters**:
+- `window` - The Tkinter window instance to set the icon for
+
+**✅ USE WHEN**:
+- You need to set a custom icon for the application
+- Changing the icon at runtime
+
+**Example**:
+```python
+from gui.snippet_list import set_app_icon
+
+# In your main application code:
+set_app_icon(self.root)
+```
+
+---
+
 ## 📝 LOGGING PATTERNS
 
 ### User-Facing Operations
