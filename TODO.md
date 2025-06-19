@@ -77,7 +77,13 @@
    - [ ] **Accessibility improvements** - Consider contrast, readability, keyboard navigation
 
 5. **Technical Debt & Code Quality**
-   - [ ] **Debug Mode Launch** - Update debug mode to launch via `debug.py` instead of environment variable
+   - ✅ **DEBUG MODE COMPLETED** - Unified debug system with multiple activation methods
+     - ✅ `debug.py` launcher (environment variable method)
+     - ✅ `--debug` and `-d` command line flags  
+     - ✅ `PROMPT_SNIPPETS_DEBUG=true` environment variable
+     - ✅ Unified debug detection across all components
+     - ✅ EXE-ready: Command line flags work for future installers
+     - ✅ Added `utils/debug_utils.py` with EXE detection helpers
    - [ ] **Print Statement Cleanup** - Replace remaining print() calls with proper logging
    - [ ] **Centralized Styling** - Move hardcoded UI colors/styles to theme system
    - [ ] **Complex Filter Logic** - Break down `_apply_bubble_filters()` into smaller functions

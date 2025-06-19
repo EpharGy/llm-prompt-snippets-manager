@@ -18,7 +18,9 @@
 | Style treeview consistently | `configure_tree_style()` | utils/ui_utils.py |
 | Filter snippets by text search | `filter_snippets_by_search()` | utils/state_utils.py |
 | Create styled filter buttons | `_create_bubble_button()` | gui/snippet_list.py |
-| Add debug-only development tools | `DEBUG_MODE` pattern | gui/snippet_list.py |
+| Add debug-only development tools | `get_debug_mode()` | utils/debug_utils.py |
+| Detect if running as EXE | `is_exe_build()` | utils/debug_utils.py |
+| Get app path (script or EXE) | `get_app_path()` | utils/debug_utils.py |
 | Log user-facing operations | `logger.info("✅ message")` | utils/logger.py |
 | Sanitize category/label input | `sanitize_category_label(text, is_category)` | models/data_manager.py |
 
@@ -367,17 +369,43 @@ matching_ids = filter_snippets_by_search(all_snippets.values(), ["search", "term
 ## 🧪 DEBUG MODE PATTERN
 
 ### Launching Debug Mode
-**Recommended**: Use `debug.py` script for development tools
+### 🐛 Unified Debug System
+**Locations**: `utils/debug_utils.py`, `utils/logger.py`, `debug.py`  
+**Purpose**: Consistent debug mode detection across all components with multiple activation methods
+
+**✨ Multiple Ways to Enable Debug Mode**:
 ```bash
+# Method 1: Debug launcher (recommended for development)
 python debug.py
-```
 
-**Alternative**: Set environment variable (legacy method)
-```bash
+# Method 2: Command line flags (EXE-ready)
+python main.py --debug
+python main.py -d
+
+# Method 3: Environment variables  
 PROMPT_SNIPPETS_DEBUG=true python main.py
+DEBUG=true python main.py  # Generic fallback
 ```
 
-**Pattern for debug-only features**:
+**Usage in Code**:
+```python
+from utils.debug_utils import get_debug_mode, debug_print, is_exe_build
+
+# Check debug mode anywhere
+if get_debug_mode():
+    # Add debug-only features
+    self.test_button = ttk.Button(frame, text="Test", command=self._test_function)
+
+# Debug-only printing
+debug_print("This only shows in debug mode")
+
+# EXE detection (useful for installers)
+if is_exe_build():
+    # Handle executable-specific logic
+    app_path = get_app_path()  # Works for both script and EXE
+```
+
+**Legacy Pattern (still works)**:
 ```python
 import os
 DEBUG_MODE = os.environ.get('PROMPT_SNIPPETS_DEBUG', 'False').lower() == 'true'
@@ -387,6 +415,12 @@ if DEBUG_MODE:
     self.test1_btn = ttk.Button(button_frame, text="T1", width=3, command=self._add_test_snippet_1)
     self.test2_btn = ttk.Button(button_frame, text="T2", width=3, command=self._add_test_snippet_2)
 ```
+
+**✅ FEATURES**:
+- **EXE-Ready**: Command line flags work with compiled executables
+- **Multiple Methods**: Environment variables, CLI flags, launcher script
+- **Unified Detection**: All components use same debug state
+- **Source Tracking**: Logs which method activated debug mode
 
 ---
 

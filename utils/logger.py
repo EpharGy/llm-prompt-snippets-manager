@@ -192,19 +192,39 @@ def set_debug_mode(enabled: bool = True) -> None:
     LogManager.set_global_level(level)
 
 
+def is_debug_mode() -> bool:
+    """Check if debug mode is currently enabled.
+    
+    Returns:
+        bool: True if debug mode is active, False otherwise
+    """
+    return LogManager._global_level == LogLevel.DEBUG
+
+
 def configure_logging_from_environment() -> None:
     """Configure logging based on environment variables and command line args."""
-    # Check environment variable
-    debug_env = os.getenv('DEBUG', '').lower() in ['true', '1', 'yes', 'on']
+    # Check our app-specific environment variable
+    debug_env = os.getenv('PROMPT_SNIPPETS_DEBUG', '').lower() in ['true', '1', 'yes', 'on']
+    
+    # Check generic debug environment variable (fallback)
+    debug_generic = os.getenv('DEBUG', '').lower() in ['true', '1', 'yes', 'on']
     
     # Check command line arguments
     debug_arg = '--debug' in sys.argv or '-d' in sys.argv
     
-    # Enable debug mode if either is set
-    if debug_env or debug_arg:
+    # Enable debug mode if any method is used
+    if debug_env or debug_generic or debug_arg:
         set_debug_mode(True)
         logger = get_logger("LogManager")
-        logger.info("Debug mode enabled")
+        logger.info("🐛 Debug mode enabled")
+        
+        # Log which method triggered debug mode
+        if debug_arg:
+            logger.debug("Debug enabled via command line flag")
+        elif debug_env:
+            logger.debug("Debug enabled via PROMPT_SNIPPETS_DEBUG environment variable")
+        elif debug_generic:
+            logger.debug("Debug enabled via DEBUG environment variable")
     else:
         set_debug_mode(False)
 

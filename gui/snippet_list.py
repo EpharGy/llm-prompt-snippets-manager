@@ -1,5 +1,4 @@
 from uuid import uuid4
-import os
 import tkinter as tk
 from tkinter import ttk, messagebox
 import traceback
@@ -14,8 +13,9 @@ from utils.logger import get_logger
 
 logger = get_logger(__name__)
 
-# Debug mode flag - set PROMPT_SNIPPETS_DEBUG=true to enable test buttons
-DEBUG_MODE = os.environ.get('PROMPT_SNIPPETS_DEBUG', 'False').lower() == 'true'
+# Debug mode flag - unified debug system checks environment and command line args
+from utils.logger import is_debug_mode
+DEBUG_MODE = is_debug_mode()
 
 class ScrollableBubbleFrame(ttk.Frame):
     """Scrollable frame for bubble buttons with max 4 rows"""
